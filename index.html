@@ -1,2560 +1,697 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CurrencyExchangeWallet - Professional Trading Platform</title>
-  
-  <!-- ========================================
-       AUTHENTICATION CHECK - MUST LOGIN FIRST
-       ======================================== -->
+  <title>WFB</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111111">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WFB">
+  <link rel="apple-touch-icon" href="WFB.png">
+  <link rel="icon" type="image/png" href="WFB.png">
   <script>
-    // Check authentication IMMEDIATELY before loading anything
     (function() {
       'use strict';
-      
-      console.log('🔒 Checking authentication...');
-      
-      // Check if logged in
       const isLoggedIn = localStorage.getItem("loggedIn");
       const passwordHash = localStorage.getItem("passwordHash");
-      const validHash = "53d51dc5720d345c3c15c1cd4997814f"; // MD5 of "@@@@@@@@"
-      
-      // If not logged in or invalid password hash, redirect immediately
-      if (isLoggedIn !== "true" || !passwordHash || passwordHash !== validHash) {
-        console.log('❌ Not authenticated - redirecting to login...');
+      const validHashes = ["813461e0c58e7ad59a2fd83ca2237fec"];
+      if (isLoggedIn !== "true" || !passwordHash || !validHashes.includes(passwordHash)) {
         localStorage.clear();
         window.location.replace("login.html");
-        // Stop script execution
         throw new Error('Authentication required');
       }
-      
-      console.log('✅ Authentication passed');
     })();
   </script>
-  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <style>
-    /* Modern Loading Animation */
-    .loading-ring {
-      display: inline-block;
-      position: relative;
-      width: 80px;
-      height: 80px;
-    }
-    .loading-ring div {
-      box-sizing: border-box;
-      display: block;
-      position: absolute;
-      width: 64px;
-      height: 64px;
-      margin: 8px;
-      border: 8px solid #00ff41;
-      border-radius: 50%;
-      animation: loading-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-      border-color: #00ff41 transparent transparent transparent;
-    }
-    .loading-ring div:nth-child(1) {
-      animation-delay: -0.45s;
-    }
-    .loading-ring div:nth-child(2) {
-      animation-delay: -0.3s;
-    }
-    .loading-ring div:nth-child(3) {
-      animation-delay: -0.15s;
-    }
-    @keyframes loading-ring {
-      0% {
-        transform: rotate(0deg);
-      }
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    /* Circular Progress Bar */
-    .circular-progress {
-      position: relative;
-      width: 120px;
-      height: 120px;
-      margin: 0 auto;
-    }
-    .circular-progress svg {
-      transform: rotate(-90deg);
-    }
-    .circular-progress-circle {
-      fill: none;
-      stroke: #30363d;
-      stroke-width: 8;
-    }
-    .circular-progress-bar {
-      fill: none;
-      stroke: #00ff41;
-      stroke-width: 8;
-      stroke-linecap: round;
-      transition: stroke-dashoffset 0.3s ease;
-      filter: drop-shadow(0 0 10px #00ff41);
-    }
-    .progress-text {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 24px;
-      font-weight: bold;
-      color: #00ff41;
-      text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
-    }
-
-    /* Success Checkmark Animation */
-    .success-checkmark {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto;
-    }
-    .success-checkmark .check-icon {
-      width: 80px;
-      height: 80px;
-      position: relative;
-      border-radius: 50%;
-      box-sizing: content-box;
-      border: 4px solid #00ff41;
-      animation: checkmark-bounce 0.6s ease;
-    }
-    .success-checkmark .check-icon::before {
-      top: 3px;
-      left: -2px;
-      width: 30px;
-      transform-origin: 100% 50%;
-      border-radius: 100px 0 0 100px;
-    }
-    .success-checkmark .check-icon::after {
-      top: 0;
-      left: 30px;
-      width: 60px;
-      transform-origin: 0 50%;
-      border-radius: 0 100px 100px 0;
-      animation: checkmark-rotate 4.25s ease;
-    }
-    .success-checkmark .check-icon .icon-line {
-      height: 5px;
-      background-color: #00ff41;
-      display: block;
-      border-radius: 2px;
-      position: absolute;
-      z-index: 10;
-    }
-    .success-checkmark .check-icon .icon-line.line-tip {
-      top: 46px;
-      left: 14px;
-      width: 25px;
-      transform: rotate(45deg);
-      animation: checkmark-tip 0.75s 0.3s ease;
-    }
-    .success-checkmark .check-icon .icon-line.line-long {
-      top: 38px;
-      right: 8px;
-      width: 47px;
-      transform: rotate(-45deg);
-      animation: checkmark-long 0.75s 0.6s ease;
-    }
-    @keyframes checkmark-rotate {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    @keyframes checkmark-bounce {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-    }
-    @keyframes checkmark-tip {
-      0% { width: 0; left: 1px; top: 19px; }
-      54% { width: 0; left: 1px; top: 19px; }
-      70% { width: 50px; left: -8px; top: 37px; }
-      84% { width: 17px; left: 21px; top: 48px; }
-      100% { width: 25px; left: 14px; top: 46px; }
-    }
-    @keyframes checkmark-long {
-      0% { width: 0; right: 46px; top: 54px; }
-      65% { width: 0; right: 46px; top: 54px; }
-      84% { width: 55px; right: 0px; top: 35px; }
-      100% { width: 47px; right: 8px; top: 38px; }
-    }
+    @keyframes wfbBarFill { from { width:0% } to { width:100% } }
+    @keyframes wfbScan    { from { left:-60% } to { left:120% } }
+    @keyframes wfbBounceIn2 { 0%{transform:scale(0.3);opacity:0} 55%{transform:scale(1.2);opacity:1} 80%{transform:scale(0.9)} 100%{transform:scale(1);opacity:1} }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-  <!-- Header -->
-  <nav class="navbar navbar-dark bg-dark shadow-sm">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">
-        <i class="fas fa-chart-line"></i> CurrencyExchangeWallet
-      </a>
-      <div class="d-flex align-items-center gap-3">
-        <div class="d-flex align-items-center gap-2">
-          <i class="fas fa-user-circle" style="color: #00ff41; font-size: 20px;"></i>
-          <span class="text-light" id="userEmail" style="color: #00ff41 !important; text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);">--</span>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <i class="fas fa-network-wired" style="color: #00bfff; font-size: 16px;"></i>
-          <span class="text-light small" id="networkName" style="color: #00bfff !important; font-size: 12px;">
-            --
-          </span>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <i class="fas fa-wallet" style="color: #ffc107; font-size: 18px;"></i>
-          <span class="text-light small" id="walletAddress" style="color: #ffc107 !important; font-family: monospace;">
-            --
-          </span>
-        </div>
-        <!-- ADD: Bank Deposit Button -->
-        <button class="btn btn-sm btn-success" onclick="openBankDepositModal()">
-          <i class="fas fa-university"></i> Nhận tiền
-        </button>
-        <button class="btn btn-sm btn-outline-light" id="connectBtn" onclick="connectWallet()">
-          <i class="fas fa-wallet"></i> <span id="walletStatus">Connect Wallet</span>
-        </button>
-        <button class="btn btn-sm btn-warning" id="disconnectBtn" onclick="disconnectWallet()" style="display: none;">
-          <i class="fas fa-unlink"></i> Disconnect
-        </button>
-        <button class="btn btn-sm btn-danger" onclick="logout()">
-          <i class="fas fa-sign-out-alt"></i> Back
-        </button>
-      </div>
+
+  <!-- Navbar -->
+  <nav class="wt-navbar">
+    <div class="wt-navbar-brand">WFB</div>
+    <div class="wt-navbar-center">
+      <input type="text" id="globalSearch" class="wt-search-input" placeholder="Tìm kiếm User ID hoặc tên..." oninput="liveSearch(this.value)">
+    </div>
+    <div class="wt-navbar-right">
+      <select id="networkSelect" class="wt-select" onchange="filterByNetwork(this.value)">
+        <option value="all">Tất cả mạng</option>
+        <option value="ethereum">Ethereum</option>
+        <option value="bitcoin">Bitcoin</option>
+        <option value="bsc">BSC</option>
+        <option value="solana">Solana</option>
+        <option value="polygon">Polygon</option>
+        <option value="avalanche">Avalanche</option>
+      </select>
+      <span class="wt-user" id="userLabel">--</span>
+      <span class="wt-user" id="roleLabel" style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.5px"></span>
+      <button class="wt-btn" id="pwaInstallBtn" style="display:none" onclick="pwaInstall()">Cài ứng dụng</button>
+      <button class="wt-btn" onclick="openSettings()">Cài đặt</button>
+      <button class="wt-btn" onclick="logout()">Đăng xuất</button>
     </div>
   </nav>
 
-  <div class="trading-container">
-    <!-- Sidebar -->
-    <aside class="sidebar bg-dark text-light">
-      <div class="sidebar-header p-3 border-bottom border-secondary">
-        <h6 class="mb-0"><i class="fas fa-coins"></i> Thị trường</h6>
+  <!-- Stats Bar -->
+  <div class="wt-statsbar">
+    <div class="wt-stat">
+      <div class="wt-stat-label">Tổng Users theo dõi</div>
+      <div class="wt-stat-value" id="statTotalWallets">500</div>
+    </div>
+    <div class="wt-stat">
+      <div class="wt-stat-label">Tổng tài sản (USD)</div>
+      <div class="wt-stat-value" id="statTotalValue">$0</div>
+    </div>
+    <div class="wt-stat">
+      <div class="wt-stat-label">Top User
+
       </div>
-      <div class="market-list">
-        <div class="market-item active" data-pair="ETH/USDT" data-coin="ethereum">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>ETH/USDT</strong>
-              <small class="d-block text-muted">Ethereum</small>
-            </div>
-            <div class="text-end">
-              <div class="price-up">$2,345.67</div>
-              <small class="text-success">+8.56%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="BTC/USDT" data-coin="bitcoin">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>BTC/USDT</strong>
-              <small class="d-block text-muted">Bitcoin</small>
-            </div>
-            <div class="text-end">
-              <div class="price-up">$43,210.50</div>
-              <small class="text-success">+1.52%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="BNB/USDT" data-coin="binancecoin">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>BNB/USDT</strong>
-              <small class="d-block text-muted">Binance Coin</small>
-            </div>
-            <div class="text-end">
-              <div class="price-down">$312.45</div>
-              <small class="text-danger">-0.85%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="SOL/USDT" data-coin="solana">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>SOL/USDT</strong>
-              <small class="d-block text-muted">Solana</small>
-            </div>
-            <div class="text-end">
-              <div class="price-up">$98.45</div>
-              <small class="text-success">+3.12%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="XRP/USDT" data-coin="ripple">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>XRP/USDT</strong>
-              <small class="d-block text-muted">Ripple</small>
-            </div>
-            <div class="text-end">
-              <div class="price-up">$0.5234</div>
-              <small class="text-success">+1.87%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="ADA/USDT" data-coin="cardano">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>ADA/USDT</strong>
-              <small class="d-block text-muted">Cardano</small>
-            </div>
-            <div class="text-end">
-              <div class="price-down">$0.3876</div>
-              <small class="text-danger">-2.34%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="DOGE/USDT" data-coin="dogecoin">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>DOGE/USDT</strong>
-              <small class="d-block text-muted">Dogecoin</small>
-            </div>
-            <div class="text-end">
-              <div class="price-up">$0.0823</div>
-              <small class="text-success">+5.67%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="MATIC/USDT" data-coin="matic-network">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>MATIC/USDT</strong>
-              <small class="d-block text-muted">Polygon</small>
-            </div>
-            <div class="text-end">
-              <div class="price-up">$0.8234</div>
-              <small class="text-success">+2.45%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="DOT/USDT" data-coin="polkadot">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>DOT/USDT</strong>
-              <small class="d-block text-muted">Polkadot</small>
-            </div>
-            <div class="text-end">
-              <div class="price-down">$5.67</div>
-              <small class="text-danger">-1.23%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="AVAX/USDT" data-coin="avalanche-2">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>AVAX/USDT</strong>
-              <small class="d-block text-muted">Avalanche</small>
-            </div>
-            <div class="text-end">
-              <div class="price-up">$34.56</div>
-              <small class="text-success">+4.12%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="LINK/USDT" data-coin="chainlink">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>LINK/USDT</strong>
-              <small class="d-block text-muted">Chainlink</small>
-            </div>
-            <div class="text-end">
-              <div class="price-up">$14.23</div>
-              <small class="text-success">+1.98%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="UNI/USDT" data-coin="uniswap">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>UNI/USDT</strong>
-              <small class="d-block text-muted">Uniswap</small>
-            </div>
-            <div class="text-end">
-              <div class="price-down">$6.78</div>
-              <small class="text-danger">-0.56%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="LTC/USDT" data-coin="litecoin">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>LTC/USDT</strong>
-              <small class="d-block text-muted">Litecoin</small>
-            </div>
-            <div class="text-end">
-              <div class="price-up">$72.34</div>
-              <small class="text-success">+2.11%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="ATOM/USDT" data-coin="cosmos">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>ATOM/USDT</strong>
-              <small class="d-block text-muted">Cosmos</small>
-            </div>
-            <div class="text-end">
-              <div class="price-up">$9.87</div>
-              <small class="text-success">+3.45%</small>
-            </div>
-          </div>
-        </div>
-        <div class="market-item" data-pair="SHIB/USDT" data-coin="shiba-inu">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>SHIB/USDT</strong>
-              <small class="d-block text-muted">Shiba Inu</small>
-            </div>
-            <div class="text-end">
-              <div class="price-down">$0.000009</div>
-              <small class="text-danger">-1.87%</small>
-            </div>
-          </div>
-        </div>
+      <div class="wt-stat-value" id="statTopHolder">--</div>
+    </div>
+    <div class="wt-stat">
+      <div class="wt-stat-label">Giao dịch lớn hôm nay</div>
+      <div class="wt-stat-value" id="statWhaleAlerts">--</div>
+    </div>
+    <div class="wt-stat">
+      <div class="wt-stat-label">Cập nhật lúc</div>
+      <div class="wt-stat-value" id="statLastUpdate">--</div>
+    </div>
+  </div>
+
+  <!-- Main Layout -->
+  <div class="wt-layout">
+
+    <!-- Left Sidebar: Filters -->
+    <aside class="wt-sidebar">
+      <div class="wt-sidebar-section">
+        <div class="wt-sidebar-title">BỘ LỌC</div>
+
+        <label class="wt-label">Mạng</label>
+        <select class="wt-select w-100" id="sidebarNetwork" onchange="applyFilters()">
+          <option value="all">Tất cả</option>
+          <option value="ethereum">Ethereum</option>
+          <option value="bitcoin">Bitcoin</option>
+          <option value="bsc">BSC</option>
+          <option value="solana">Solana</option>
+          <option value="polygon">Polygon</option>
+          <option value="avalanche">Avalanche</option>
+        </select>
+
+        <label class="wt-label">Số dư tối thiểu (USD)</label>
+        <input type="number" class="wt-input" id="filterMinBalance" placeholder="0" oninput="applyFilters()">
+
+        <label class="wt-label">Số dư tối đa (USD)</label>
+        <input type="number" class="wt-input" id="filterMaxBalance" placeholder="Không giới hạn" oninput="applyFilters()">
+
+        <label class="wt-label">Loại tài khoản</label>
+        <select class="wt-select w-100" id="filterType" onchange="applyFilters()">
+          <option value="all">Tất cả</option>
+          <option value="exchange">Sàn giao dịch</option>
+          <option value="whale">Cá voi cá nhân</option>
+          <option value="fund">Quỹ đầu tư</option>
+          <option value="unknown">Ẩn danh</option>
+        </select>
+
+        <label class="wt-label">Sắp xếp theo</label>
+        <select class="wt-select w-100" id="filterSort" onchange="applyFilters()">
+          <option value="value_desc">Tài sản: Cao → Thấp</option>
+          <option value="value_asc">Tài sản: Thấp → Cao</option>
+          <option value="tx_desc">Giao dịch: Nhiều nhất</option>
+          <option value="recent">Hoạt động gần đây</option>
+        </select>
+
+        <button class="wt-btn w-100 mt-2" onclick="resetFilters()">Xóa bộ lọc</button>
+      </div>
+
+      <div class="wt-sidebar-section">
+        <div class="wt-sidebar-title">PHÂN BỐ TÀI SẢN</div>
+        <canvas id="distributionChart" height="200"></canvas>
+      </div>
+
+      <div class="wt-sidebar-section">
+        <div class="wt-sidebar-title">WATCHLIST (<span id="watchlistCount">0</span>)</div>
+        <div id="watchlistSidebar" class="wt-watchlist-mini"></div>
+        <button class="wt-btn w-100 mt-2" onclick="showTab('watchlist')">Xem tất cả</button>
       </div>
     </aside>
 
     <!-- Main Content -->
-    <main class="main-content">
-      <!-- Top Stats -->
-      <div class="stats-bar bg-white border-bottom">
-        <div class="container-fluid py-2">
-          <div class="row g-3">
-            <div class="col-auto">
-              <div class="stat-item">
-                <small class="text-muted">Giá hiện tại</small>
-                <div class="h5 mb-0" id="currentPrice">$8,242.14</div>
-              </div>
+    <main class="wt-main">
+
+      <!-- Tabs -->
+      <div class="wt-tabs">
+        <button class="wt-tab active" onclick="showTab('top')" id="tab-top">Top Users</button>
+        <button class="wt-tab" onclick="showTab('whale')" id="tab-whale">Whale Alerts</button>
+        <button class="wt-tab" onclick="showTab('withdraw')" id="tab-withdraw">Chế Độ Rút</button>
+        <button class="wt-tab" onclick="showTab('watchlist')" id="tab-watchlist">Watchlist</button>
+        <button class="wt-tab" onclick="showTab('search')" id="tab-search">Truy Tìm</button>
+        <button class="wt-tab" onclick="showTab('stats')" id="tab-stats">Thống kê</button>
+        <button class="wt-tab" onclick="showTab('map')" id="tab-map">Bản đồ</button>
+        <div class="wt-tabs-right">
+          <button class="wt-btn-sm" onclick="exportCSV()">Xuất CSV</button>
+          <button class="wt-btn-sm" onclick="refreshData()">Làm mới</button>
+        </div>
+      </div>
+
+      <!-- Top Users Tab -->
+      <div class="wt-tab-content" id="panel-top">
+        <div class="wt-toolbar">
+          <span id="resultCount" class="wt-result-count">Hiển thị 0 users</span>
+          <div class="wt-toolbar-right">
+            <button class="wt-btn-sm active" onclick="setView('table')" id="viewTable">Bảng</button>
+            <button class="wt-btn-sm" onclick="setView('card')" id="viewCard">Thẻ</button>
+          </div>
+        </div>
+
+        <!-- Table View -->
+        <div id="tableView">
+          <table class="wt-table" id="walletsTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th onclick="sortBy('name')">Tên / User ID</th>
+                <th onclick="sortBy('network')">Mạng</th>
+                <th onclick="sortBy('type')">Loại</th>
+                <th onclick="sortBy('balance')" class="sortable">Số dư chính</th>
+                <th onclick="sortBy('value')" class="sortable">Tổng giá trị (USD)</th>
+                <th onclick="sortBy('change24h')">24h</th>
+                <th onclick="sortBy('txCount')">Số TX</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="walletsTableBody"></tbody>
+          </table>
+          <div class="wt-pagination">
+            <button class="wt-btn-sm" onclick="prevPage()">Trước</button>
+            <span id="pageInfo">Trang 1 / 1</span>
+            <button class="wt-btn-sm" onclick="nextPage()">Sau</button>
+            <select class="wt-select-sm" id="pageSize" onchange="applyFilters()">
+              <option value="20">20 / trang</option>
+              <option value="50">50 / trang</option>
+              <option value="100">100 / trang</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Card View -->
+        <div id="cardView" style="display:none">
+          <div class="wt-card-grid" id="walletsCardGrid"></div>
+        </div>
+      </div>
+
+      <!-- Withdrawal Mode Tab -->
+      <div class="wt-tab-content" id="panel-withdraw" style="display:none">
+        <div class="wt-toolbar">
+          <span class="wt-result-count">Chế độ rút — theo dõi luồng tiền rút khỏi Users lớn</span>
+          <div class="wt-toolbar-right">
+            <select class="wt-select-sm" id="withdrawNetwork" onchange="renderWithdrawals()">
+              <option value="all">Tất cả mạng</option>
+              <option value="ethereum">Ethereum</option>
+              <option value="bitcoin">Bitcoin</option>
+              <option value="bsc">BSC</option>
+              <option value="solana">Solana</option>
+            </select>
+            <select class="wt-select-sm" id="withdrawMin" onchange="renderWithdrawals()">
+              <option value="500000">$500K+</option>
+              <option value="1000000">$1M+</option>
+              <option value="5000000">$5M+</option>
+              <option value="10000000">$10M+</option>
+            </select>
+            <select class="wt-select-sm" id="withdrawDirection" onchange="renderWithdrawals()">
+              <option value="all">Tất cả chiều</option>
+              <option value="out">Rút ra (outflow)</option>
+              <option value="in">Nạp vào (inflow)</option>
+            </select>
+            <button class="wt-btn-sm" onclick="exportWithdrawCSV()">Xuất CSV</button>
+          </div>
+        </div>
+        <div class="wt-withdraw-stats" id="withdrawStats"></div>
+        <table class="wt-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Thời gian</th>
+              <th>User nguồn</th>
+              <th>User đích</th>
+              <th>Token</th>
+              <th>Số lượng</th>
+              <th>Giá trị (USD)</th>
+              <th>Chiều</th>
+              <th>Mạng</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody id="withdrawTableBody"></tbody>
+        </table>
+        <div class="wt-pagination">
+          <button class="wt-btn-sm" onclick="prevWithdrawPage()">Trước</button>
+          <span id="withdrawPageInfo">Trang 1 / 1</span>
+          <button class="wt-btn-sm" onclick="nextWithdrawPage()">Sau</button>
+        </div>
+
+        <!-- USD Seizure Log -->
+        <div class="wt-seizure-section">
+          <div class="wt-seizure-header">
+            <div class="wt-seizure-title">
+              <span style="color:#ff6b35;font-size:13px;font-weight:bold">Lệnh Rút USD — WFB Seizure Log</span>
+              <span id="seizureCount" style="font-size:10px;color:#444;margin-left:8px">0 lệnh</span>
             </div>
-            <div class="col-auto">
-              <div class="stat-item">
-                <small class="text-muted">24h Thay đổi</small>
-                <div class="h5 mb-0 text-success">+2.34%</div>
-              </div>
+            <div class="wt-seizure-actions">
+              <span style="font-size:12px;color:#555">Tổng đã thu:&nbsp;<strong id="seizureTotal" style="color:#ff6b35">$0</strong></span>
+              <button class="wt-btn-sm" onclick="exportSeizureCSV()" style="margin-left:8px">Xuất CSV</button>
             </div>
-            <div class="col-auto">
-              <div class="stat-item">
-                <small class="text-muted">24h Cao</small>
-                <div class="h5 mb-0">$2,456.89</div>
-              </div>
+          </div>
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Thời gian</th>
+                <th>User mục tiêu</th>
+                <th>Số tiền rút (USD)</th>
+                <th>Lý do / Căn cứ</th>
+                <th>Operator</th>
+                <th>Trạng thái</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="seizureTableBody">
+              <tr><td colspan="8" style="text-align:center;color:#444;padding:20px">Chưa có lệnh rút nào được ban hành</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Whale Alerts Tab -->
+      <div class="wt-tab-content" id="panel-whale" style="display:none">
+        <div class="wt-toolbar">
+          <span class="wt-result-count">Giao dịch lớn trong 24h qua</span>
+          <div class="wt-toolbar-right">
+            <select class="wt-select-sm" id="whaleMinAmount" onchange="renderWhaleAlerts()">
+              <option value="1000000">$1M+</option>
+              <option value="5000000">$5M+</option>
+              <option value="10000000">$10M+</option>
+              <option value="50000000">$50M+</option>
+            </select>
+          </div>
+        </div>
+        <table class="wt-table">
+          <thead>
+            <tr>
+              <th>Thời gian</th>
+              <th>Từ</th>
+              <th>Đến</th>
+              <th>Token</th>
+              <th>Số lượng</th>
+              <th>Giá trị (USD)</th>
+              <th>Mạng</th>
+              <th>TX Hash</th>
+            </tr>
+          </thead>
+          <tbody id="whaleTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Watchlist Tab -->
+      <div class="wt-tab-content" id="panel-watchlist" style="display:none">
+        <div class="wt-toolbar">
+          <span class="wt-result-count">Danh sách theo dõi của bạn</span>
+          <div class="wt-toolbar-right">
+            <input type="text" class="wt-input-sm" id="addWatchInput" placeholder="Nhập User ID...">
+            <button class="wt-btn-sm" onclick="addToWatchlistManual()">Thêm</button>
+          </div>
+        </div>
+        <div id="watchlistContent">
+          <div class="wt-empty">Chưa có User nào trong watchlist. Nhấn [+] trên bảng để thêm.</div>
+        </div>
+      </div>
+
+      <!-- Truy Tìm (Advanced Search) Tab -->
+      <div class="wt-tab-content" id="panel-search" style="display:none">
+        <div class="wt-search-panel">
+          <div class="wt-search-row">
+            <div class="wt-search-field">
+              <label class="wt-label">User ID</label>
+              <input type="text" class="wt-input" id="adv_address" placeholder="0x...">
             </div>
-            <div class="col-auto">
-              <div class="stat-item">
-                <small class="text-muted">24h Thấp</small>
-                <div class="h5 mb-0">$2,298.34</div>
-              </div>
+            <div class="wt-search-field">
+              <label class="wt-label">Tên nhãn</label>
+              <input type="text" class="wt-input" id="adv_label" placeholder="Binance, Satoshi...">
             </div>
-            <div class="col-auto">
-              <div class="stat-item">
-                <small class="text-muted">Khối lượng 24h</small>
-                <div class="h5 mb-0">954,4521 ETH</div>
-              </div>
+            <div class="wt-search-field">
+              <label class="wt-label">Mạng</label>
+              <select class="wt-select" id="adv_network">
+                <option value="">Tất cả</option>
+                <option value="ethereum">Ethereum</option>
+                <option value="bitcoin">Bitcoin</option>
+                <option value="bsc">BSC</option>
+                <option value="solana">Solana</option>
+              </select>
             </div>
+            <div class="wt-search-field">
+              <label class="wt-label">Loại</label>
+              <select class="wt-select" id="adv_type">
+                <option value="">Tất cả</option>
+                <option value="exchange">Sàn giao dịch</option>
+                <option value="whale">Cá voi</option>
+                <option value="fund">Quỹ</option>
+                <option value="unknown">Ẩn danh</option>
+              </select>
+            </div>
+          </div>
+          <div class="wt-search-row">
+            <div class="wt-search-field">
+              <label class="wt-label">Tài sản tối thiểu ($)</label>
+              <input type="number" class="wt-input" id="adv_min" placeholder="0">
+            </div>
+            <div class="wt-search-field">
+              <label class="wt-label">Tài sản tối đa ($)</label>
+              <input type="number" class="wt-input" id="adv_max" placeholder="Không giới hạn">
+            </div>
+            <div class="wt-search-field">
+              <label class="wt-label">Token nắm giữ</label>
+              <input type="text" class="wt-input" id="adv_token" placeholder="ETH, BTC, USDT...">
+            </div>
+            <div class="wt-search-field">
+              <label class="wt-label">Trạng thái rút</label>
+              <select class="wt-select" id="adv_withdraw">
+                <option value="">Tất cả</option>
+                <option value="active">Đang hoạt động</option>
+                <option value="dormant">Ngủ đông (30+ ngày)</option>
+              </select>
+            </div>
+          </div>
+          <div class="wt-search-row">
+            <div class="wt-search-field" style="display:flex;align-items:flex-end;">
+              <button class="wt-btn w-100" onclick="advancedSearch()">Truy tìm</button>
+            </div>
+            <div class="wt-search-field" style="display:flex;align-items:flex-end;">
+              <button class="wt-btn w-100" onclick="clearAdvSearch()">Xóa</button>
+            </div>
+            <div class="wt-search-field" style="display:flex;align-items:flex-end;">
+              <button class="wt-btn w-100" onclick="exportSearchCSV()">Xuất kết quả CSV</button>
+            </div>
+            <div class="wt-search-field"></div>
+          </div>
+        </div>
+        <table class="wt-table" id="searchResultTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Tên / Địa chỉ</th>
+              <th>Mạng</th>
+              <th>Loại</th>
+              <th>Số dư chính</th>
+              <th>Tổng giá trị (USD)</th>
+              <th>24h</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="searchResultBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Map Tab -->
+      <div class="wt-tab-content" id="panel-map" style="display:none">
+        <div class="wt-map-toolbar">
+          <div class="wt-map-filters">
+            <select class="wt-select-sm" id="mapNetworkFilter" onchange="updateMapMarkers()">
+              <option value="all">Tất cả mạng</option>
+              <option value="ethereum">Ethereum</option>
+              <option value="bitcoin">Bitcoin</option>
+              <option value="bsc">BSC</option>
+              <option value="solana">Solana</option>
+              <option value="polygon">Polygon</option>
+              <option value="avalanche">Avalanche</option>
+            </select>
+            <select class="wt-select-sm" id="mapTypeFilter" onchange="updateMapMarkers()">
+              <option value="all">Tất cả loại</option>
+              <option value="exchange">Sàn giao dịch</option>
+              <option value="whale">Cá voi</option>
+              <option value="fund">Quỹ đầu tư</option>
+              <option value="unknown">Ẩn danh</option>
+            </select>
+            <select class="wt-select-sm" id="mapValueFilter" onchange="updateMapMarkers()">
+              <option value="0">Tất cả giá trị</option>
+              <option value="1000000">$1M+</option>
+              <option value="100000000">$100M+</option>
+              <option value="1000000000">$1B+</option>
+            </select>
+          </div>
+          <div class="wt-map-stats">
+            <span class="wt-map-stat-item">Đang hiển thị: <strong id="mapUserCount">0 users</strong></span>
+            <span class="wt-map-stat-item">Tổng tài sản: <strong id="mapTotalValue">$0</strong></span>
+          </div>
+          <div class="wt-map-legend">
+            <span class="wt-legend-dot" style="background:#6b8cff"></span>ETH
+            <span class="wt-legend-dot" style="background:#f7931a"></span>BTC
+            <span class="wt-legend-dot" style="background:#f0b90b"></span>BSC
+            <span class="wt-legend-dot" style="background:#9945ff"></span>SOL
+            <span class="wt-legend-dot" style="background:#8247e5"></span>MATIC
+            <span class="wt-legend-dot" style="background:#e84142"></span>AVAX
+          </div>
+        </div>
+        <div id="userMap"></div>
+      </div>
+
+      <!-- Stats Tab -->
+      <div class="wt-tab-content" id="panel-stats" style="display:none">
+        <div class="wt-stats-grid">
+          <div class="wt-stats-card">
+            <div class="wt-stats-card-title">Tổng tài sản theo mạng</div>
+            <canvas id="networkChart" height="250"></canvas>
+          </div>
+          <div class="wt-stats-card">
+            <div class="wt-stats-card-title">Top 10 user</div>
+            <canvas id="top10Chart" height="250"></canvas>
+          </div>
+          <div class="wt-stats-card">
+            <div class="wt-stats-card-title">Phân loại Users</div>
+            <canvas id="typeChart" height="250"></canvas>
+          </div>
+          <div class="wt-stats-card">
+            <div class="wt-stats-card-title">Biến động 24h</div>
+            <canvas id="changeChart" height="250"></canvas>
           </div>
         </div>
       </div>
 
-      <!-- Chart Area -->
-      <div class="chart-section bg-white">
-        <div class="chart-header d-flex justify-content-between align-items-center p-3 border-bottom">
-          <div>
-            <h5 class="mb-0">ETH/USDT</h5>
-          </div>
-          <div class="btn-group" role="group">
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-timeframe="1H">1H</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary active" data-timeframe="4H">4H</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-timeframe="1D">1D</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-timeframe="1W">1W</button>
-          </div>
-        </div>
-        <div class="chart-container" style="position: relative; height: 350px; width: 100%; padding: 20px;">
-          <canvas id="priceChart" style="display: block !important; width: 100% !important; height: 100% !important;"></canvas>
-        </div>
-      </div>
-
-      <!-- Trading & Order Book -->
-      <div class="trading-section">
-        <div class="row g-0">
-          <!-- Order Book -->
-          <div class="col-md-4 border-end">
-            <div class="order-book bg-white h-100">
-              <div class="p-3 border-bottom">
-                <h6 class="mb-0"><i class="fas fa-book"></i> Sổ lệnh</h6>
-              </div>
-              <div class="order-book-content">
-                <table class="table table-sm mb-0">
-                  <thead>
-                    <tr>
-                      <th>Giá (USDT)</th>
-                      <th class="text-end">Số lượng (ETH)</th>
-                      <th class="text-end">Tổng</th>
-                    </tr>
-                  </thead>
-                  <tbody id="sellOrders">
-                    <tr class="sell-order">
-                      <td class="text-danger">2,347.89</td>
-                      <td class="text-end">0.5234</td>
-                      <td class="text-end">1,228.92</td>
-                    </tr>
-                    <tr class="sell-order">
-                      <td class="text-danger">2,347.12</td>
-                      <td class="text-end">1.2341</td>
-                      <td class="text-end">2,896.45</td>
-                    </tr>
-                    <tr class="sell-order">
-                      <td class="text-danger">2,346.45</td>
-                      <td class="text-end">0.8923</td>
-                      <td class="text-end">2,094.12</td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div class="current-price-row p-2 bg-light text-center">
-                  <strong class="text-success">8,242.14</strong>
-                  <small class="ms-2">≈ $8,242.14</small>
-                </div>
-                <table class="table table-sm mb-0">
-                  <tbody id="buyOrders">
-                    <tr class="buy-order">
-                      <td class="text-success">5,642.23</td>
-                      <td class="text-end">0.7456</td>
-                      <td class="text-end">1,748.92</td>
-                    </tr>
-                    <tr class="buy-order">
-                      <td class="text-success">8,742.78</td>
-                      <td class="text-end">1.6452</td>
-                      <td class="text-end">3,674.56</td>
-                    </tr>
-                    <tr class="buy-order">
-                      <td class="text-success">2,344.12</td>
-                      <td class="text-end">0.0652</td>
-                      <td class="text-end">1,012.89</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Trading Form -->
-          <div class="col-md-4 border-end">
-            <div class="trading-form bg-white h-100">
-              <div class="p-3">
-                <ul class="nav nav-tabs mb-3" role="tablist">
-                  <li class="nav-item" role="presentation">
-                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#buy-tab">Mua</button>
-                  </li>
-                  <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#sell-tab">Bán</button>
-                  </li>
-                </ul>
-
-                <div class="tab-content">
-                  <!-- Buy Tab -->
-                  <div class="tab-pane fade show active" id="buy-tab">
-                    <div class="mb-3">
-                      <label class="form-label small">Nguồn tiền</label>
-                      <select class="form-select form-select-sm" id="buyCurrency">
-                        <option value="USDT" selected>💵 USDT (Crypto)</option>
-                        <option value="VND">🏦 VND (Ngân hàng)</option>
-                      </select>
-                      <small class="text-muted" id="buyExchangeRate">Tỷ giá: 1 USD = 25,000 VND</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label class="form-label small">Số dư khả dụng</label>
-                      <div class="text-end">
-                        <strong id="balance">0.0000</strong> <span class="text-muted" id="balanceCurrency">USDT</span>
-                      </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label class="form-label small">Giá</label>
-                      <div class="input-group input-group-sm">
-                        <input type="number" class="form-control" id="buyPrice" placeholder="0.00" value="0.00" step="0.01">
-                        <span class="input-group-text" id="buyPriceCurrency">USDT</span>
-                      </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label class="form-label small">Số lượng</label>
-                      <div class="input-group input-group-sm">
-                        <input type="number" class="form-control" id="buyAmount" placeholder="0.00" step="0.00000001">
-                        <span class="input-group-text">ETH</span>
-                      </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <input type="range" class="form-range" min="0" max="100" step="25" id="buyPercentage" value="0">
-                      <div class="d-flex justify-content-between small text-muted">
-                        <span>0%</span>
-                        <span>25%</span>
-                        <span>50%</span>
-                        <span>75%</span>
-                        <span>100%</span>
-                      </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label class="form-label small">Tổng</label>
-                      <div class="input-group input-group-sm">
-                        <input type="number" class="form-control" id="buyTotal" placeholder="0.00" readonly>
-                        <span class="input-group-text" id="buyTotalCurrency">USDT</span>
-                      </div>
-                    </div>
-                    
-                    <button class="btn btn-success w-100" onclick="depositETH()">
-                      <i class="fas fa-arrow-up"></i> Mua ETH
-                    </button>
-                  </div>
-
-                  <!-- Sell Tab -->
-                  <div class="tab-pane fade" id="sell-tab">
-                    <div class="mb-3">
-                      <label class="form-label small">Nhận tiền vào</label>
-                      <select class="form-select form-select-sm" id="sellCurrency">
-                        <option value="USDT" selected>💵 USDT (Crypto)</option>
-                        <option value="VND">🏦 VND (Ngân hàng)</option>
-                      </select>
-                      <small class="text-muted" id="sellExchangeRate">Tỷ giá: 1 USD = 25,000 VND</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label class="form-label small">Số dư khả dụng</label>
-                      <div class="text-end">
-                        <strong id="balanceSell">0.0000</strong> <span class="text-muted">ETH</span>
-                      </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label class="form-label small">Giá</label>
-                      <div class="input-group input-group-sm">
-                        <input type="number" class="form-control" id="sellPrice" placeholder="0.00" value="0.00" step="0.01">
-                        <span class="input-group-text" id="sellPriceCurrency">USDT</span>
-                      </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label class="form-label small">Số lượng</label>
-                      <div class="input-group input-group-sm">
-                        <input type="number" class="form-control" id="sellAmount" placeholder="0.00" step="0.00000001">
-                        <span class="input-group-text">ETH</span>
-                      </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <input type="range" class="form-range" min="0" max="100" step="25" id="sellPercentage" value="0">
-                      <div class="d-flex justify-content-between small text-muted">
-                        <span>0%</span>
-                        <span>25%</span>
-                        <span>50%</span>
-                        <span>75%</span>
-                        <span>100%</span>
-                      </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <label class="form-label small">Tổng</label>
-                      <div class="input-group input-group-sm">
-                        <input type="number" class="form-control" id="sellTotal" placeholder="0.00" readonly>
-                        <span class="input-group-text" id="sellTotalCurrency">USDT</span>
-                      </div>
-                    </div>
-                    
-                    <button class="btn btn-danger w-100" onclick="withdrawETH()">
-                      <i class="fas fa-arrow-down"></i> Bán ETH
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Recent Trades -->
-          <div class="col-md-4">
-            <div class="recent-trades bg-white h-100">
-              <div class="p-3 border-bottom">
-                <h6 class="mb-0"><i class="fas fa-history"></i> Giao dịch gần đây</h6>
-              </div>
-              <div class="trades-list">
-                <table class="table table-sm table-hover mb-0">
-                  <thead>
-                    <tr>
-                      <th>Giá (USDT)</th>
-                      <th class="text-end">Số lượng (ETH)</th>
-                      <th class="text-end">Thời gian</th>
-                    </tr>
-                  </thead>
-                  <tbody id="recentTrades">
-                    <tr>
-                      <td class="text-success">5,642.67</td>
-                      <td class="text-end">0.3145</td>
-                      <td class="text-end text-muted">14:32:15</td>
-                    </tr>
-                    <tr>
-                      <td class="text-danger">4,346.27</td>
-                      <td class="text-end">0.5421</td>
-                      <td class="text-end text-muted">14:31:58</td>
-                    </tr>
-                    <tr>
-                      <td class="text-success">2,454.89</td>
-                      <td class="text-end">0.8923</td>
-                      <td class="text-end text-muted">14:31:42</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Order History -->
-      <div class="order-history bg-white mt-3">
-        <div class="p-3 border-bottom">
-          <ul class="nav nav-pills">
-            <li class="nav-item">
-              <a class="nav-link active" href="#openOrders" data-bs-toggle="tab">Lệnh mở</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#orderHistory" data-bs-toggle="tab">Lịch sử lệnh</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#tradeHistory" data-bs-toggle="tab">Lịch sử giao dịch</a>
-            </li>
-          </ul>
-        </div>
-        <div class="tab-content p-3">
-          <div class="tab-pane fade show active" id="openOrders">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>Thời gian</th>
-                  <th>Cặp</th>
-                  <th>Loại</th>
-                  <th>Bên</th>
-                  <th>Giá</th>
-                  <th>Số lượng</th>
-                  <th>Đã khớp</th>
-                  <th>Tổng</th>
-                  <th>Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colspan="9" class="text-center text-muted py-4">Không có lệnh mở</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="tab-pane fade" id="orderHistory">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>Thời gian</th>
-                  <th>Cặp</th>
-                  <th>Loại</th>
-                  <th>Bên</th>
-                  <th>Giá</th>
-                  <th>Số lượng</th>
-                  <th>Tổng</th>
-                  <th>Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody id="history">
-              </tbody>
-            </table>
-          </div>
-          <div class="tab-pane fade" id="tradeHistory">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>Thời gian</th>
-                  <th>Cặp</th>
-                  <th>Bên</th>
-                  <th>Giá</th>
-                  <th>Số lượng</th>
-                  <th>Phí</th>
-                  <th>Tổng</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colspan="7" class="text-center text-muted py-4">Chưa có giao dịch</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
     </main>
   </div>
 
-  <!-- UPDATED: Bank Deposit Modal with Modern Loading -->
-  <div class="modal fade" id="bankDepositModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content" style="background: #0d1117; color: #e0e0e0; border: 1px solid #30363d;">
-        <div class="modal-header" style="border-bottom: 1px solid #30363d;">
-          <h5 class="modal-title">
-            <i class="fas fa-money-bill-wave text-success"></i> Nhận tiền vào tài khoản
-          </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+  <!-- USD Withdraw Modal -->
+  <div class="wt-modal-overlay" id="usdWithdrawModal" style="display:none" onclick="closeUsdWithdrawModal(event)">
+    <div class="wt-modal" style="min-width:440px;max-width:500px">
+      <div class="wt-modal-header" style="border-left:3px solid #ff6b35">
+        <span>Lệnh Rút USD — WFB</span>
+        <button class="wt-modal-close" onclick="closeUsdWithdraw()">✕</button>
+      </div>
+      <div class="wt-modal-body">
+        <!-- Target user info (always visible) -->
+        <div id="usdWithdrawTarget" style="background:#120800;border:1px solid #2a1500;border-left:3px solid #ff6b35;padding:12px;margin-bottom:16px;border-radius:2px"></div>
+
+        <!-- Form (shown when idle) -->
+        <div id="usdWithdrawForm">
+          <div class="wt-settings-row" style="margin-bottom:12px">
+            <label class="wt-label">Số tiền USD cần rút ($)</label>
+            <input type="number" id="usdWithdrawAmount" class="wt-input" placeholder="Ví dụ: 1000000" min="1" style="width:200px">
+          </div>
+          <div class="wt-settings-row" style="margin-bottom:12px">
+            <label class="wt-label">Lý do / Căn cứ pháp lý</label>
+            <input type="text" id="usdWithdrawNote" class="wt-input" placeholder="Rửa tiền, trốn thuế..." style="width:200px">
+          </div>
+          <div id="usdWithdrawMsg" style="min-height:18px;font-size:11px;color:#ff4444;margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px">
+            <button class="wt-btn" id="usdConfirmBtn" onclick="confirmUsdWithdraw()" style="background:#1a0800;border-color:#ff6b35;color:#ff6b35;flex:1">Xác nhận rút</button>
+            <button class="wt-btn" onclick="closeUsdWithdraw()" style="flex:0 0 auto">Hủy</button>
+          </div>
         </div>
-        <div class="modal-body">
-          <!-- Selection Step -->
-          <div id="depositSelectionStep">
-            <!-- Currency Selection -->
-            <div class="mb-3">
-              <label class="form-label">Chọn loại tiền bạn cần nhận</label>
-              <select class="form-select" id="depositCurrencyType" style="background: #161b22; color: #e0e0e0; border: 1px solid #30363d;">
-                <option value="VND" selected>🏦 VND (Ngân hàng Việt Nam)</option>
-                <option value="USDT">💵 USDT (Cryptocurrency)</option>
-              </select>
-            </div>
 
-            <!-- VND Deposit Section -->
-            <div id="vndDepositSection">
-              <div class="mb-3">
-                <label class="form-label">Chọn Ngân hàng</label>
-                <select class="form-select" id="bankSelect" style="background: #161b22; color: #e0e0e0; border: 1px solid #30363d;">
-                  <option value="">-- Chọn ngân hàng --</option>
-                  <option value="vcb">🏦 Vietcombank (VCB)</option>
-                  <option value="tcb">🏦 Techcombank (TCB)</option>
-                  <option value="mb">🏦 MB Bank (MB)</option>
-                  <option value="acb">🏦 ACB</option>
-                  <option value="vib">🏦 VIB</option>
-                  <option value="bidv">🏦 BIDV</option>
-                  <option value="agribank">🏦 Agribank</option>
-                  <option value="tpbank">🏦 TPBank</option>
-                  <option value="sacombank">🏦 Sacombank</option>
-                  <option value="vietinbank">🏦 VietinBank</option>
-                </select>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Số tiền nhận (VND)</label>
-                <input type="number" class="form-control" id="depositAmountVND" placeholder="Nhập số tiền" 
-                       style="background: #161b22; color: #e0e0e0; border: 1px solid #30363d;"
-                       min="50000" step="10000">
-                <small class="text-muted">Tối thiểu: 50,000 VND</small>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Số tài khoản</label>
-                <input type="text" class="form-control" id="accountNumber" placeholder="Nhập số tài khoản"
-                       style="background: #161b22; color: #e0e0e0; border: 1px solid #30363d;">
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Tên chủ tài khoản</label>
-                <input type="text" class="form-control" id="accountName" placeholder="Nhập tên chủ tài khoản"
-                       style="background: #161b22; color: #e0e0e0; border: 1px solid #30363d;">
-              </div>
-            </div>
-
-            <!-- USDT Deposit Section -->
-            <div id="usdtDepositSection" style="display: none;">
-              <div class="mb-3">
-                <label class="form-label">Chọn mạng lưới (Network)</label>
-                <select class="form-select" id="networkSelect" style="background: #161b22; color: #e0e0e0; border: 1px solid #30363d;">
-                  <option value="TRC20" selected>⚡ TRC20 (Tron) - Phí thấp</option>
-                  <option value="ERC20">🔷 ERC20 (Ethereum)</option>
-                  <option value="BEP20">🟡 BEP20 (BSC)</option>
-                  <option value="Polygon">🟣 Polygon (MATIC)</option>
-                </select>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Số tiền nhận (USDT)</label>
-                <input type="number" class="form-control" id="depositAmountUSDT" placeholder="Nhập số USDT" 
-                       style="background: #161b22; color: #e0e0e0; border: 1px solid #30363d;"
-                       min="10" step="0.01">
-                <small class="text-muted">Tối thiểu: 10 USDT</small>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Địa chỉ ví gửi (Wallet Address)</label>
-                <input type="text" class="form-control" id="senderWallet" placeholder="0x..." 
-                       style="background: #161b22; color: #e0e0e0; border: 1px solid #30363d;">
-                <small class="text-muted">Địa chỉ ví bạn gửi USDT từ đó</small>
-              </div>
-
-              <div class="alert" style="background: #1e2139; border: 1px solid #30363d; color: #8b949e;">
-                <i class="fas fa-wallet text-warning"></i>
-                <strong>Địa chỉ nhận:</strong>
-                <div class="mt-2 p-2" style="background: #0d1117; border-radius: 5px; font-family: monospace; font-size: 12px; word-break: break-all;">
-                  TYDz8qJhZ5KfGQhgHqxKLRgBjBsQzHg7Pj
-                </div>
-                <small class="text-warning mt-1 d-block">⚠️ Chỉ gửi USDT qua mạng đã chọn</small>
-              </div>
-            </div>
-
-            <div class="alert" style="background: #1e2139; border: 1px solid #30363d; color: #8b949e;">
-              <i class="fas fa-info-circle text-info"></i>
-              <strong>Lưu ý:</strong> Giao dịch sẽ được xử lý trong 1-5 phút. Vui lòng không tắt trình duyệt.
-            </div>
-
-            <button class="btn btn-success w-100" onclick="processDeposit()">
-              <i class="fas fa-paper-plane"></i> Xác nhận 
-            </button>
+        <!-- Loading state -->
+        <div id="usdWithdrawLoading" style="display:none;padding:4px 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#555">Đang xử lý lệnh rút...</div>
+            <div id="usdLoadPct" style="font-size:12px;color:#ff6b35;font-family:monospace;font-weight:bold">0%</div>
           </div>
-
-          <!-- Modern Loading Step -->
-          <div id="loadingStep" style="display: none;">
-            <div class="text-center py-5">
-              <!-- Circular Progress -->
-              <div class="circular-progress mb-4">
-                <svg width="120" height="120">
-                  <circle class="circular-progress-circle" cx="60" cy="60" r="54"></circle>
-                  <circle class="circular-progress-bar" id="progressCircle" cx="60" cy="60" r="54"
-                          stroke-dasharray="339.292" stroke-dashoffset="339.292"></circle>
-                </svg>
-                <div class="progress-text" id="progressPercentage">0%</div>
-              </div>
-
-              <h5 class="mb-3" style="color: #00ff41;">
-                <i class="fas fa-sync fa-spin"></i> Đang xử lý giao dịch...
-              </h5>
-              
-              <p class="text-muted mb-3" id="loadingMessage">Đang kết nối với hệ thống thanh toán...</p>
-
-              <!-- Loading Steps -->
-              <div class="text-start mx-auto" style="max-width: 300px;">
-                <div class="mb-2 p-2" style="background: #161b22; border-radius: 5px;" id="step1">
-                  <i class="fas fa-circle-notch fa-spin text-warning"></i>
-                  <span class="ms-2 text-muted">Xác thực thông tin...</span>
-                </div>
-                <div class="mb-2 p-2" style="background: #161b22; border-radius: 5px; opacity: 0.5;" id="step2">
-                  <i class="fas fa-circle text-muted"></i>
-                  <span class="ms-2 text-muted">Kết nối blockchain...</span>
-                </div>
-                <div class="mb-2 p-2" style="background: #161b22; border-radius: 5px; opacity: 0.5;" id="step3">
-                  <i class="fas fa-circle text-muted"></i>
-                  <span class="ms-2 text-muted">Xác nhận giao dịch...</span>
-                </div>
-                <div class="mb-2 p-2" style="background: #161b22; border-radius: 5px; opacity: 0.5;" id="step4">
-                  <i class="fas fa-circle text-muted"></i>
-                  <span class="ms-2 text-muted">Hoàn tất...</span>
-                </div>
-              </div>
-
-              <p class="text-muted mt-4 small">
-                <i class="fas fa-shield-alt text-success"></i> Giao dịch được mã hóa SSL 256-bit
-              </p>
-            </div>
+          <!-- Track + fill bar + scan shimmer -->
+          <div style="position:relative;height:8px;background:#0a0a0a;border:1px solid #3a1500;overflow:hidden;margin-bottom:14px;border-radius:2px">
+            <div id="usdLoadBar" style="height:100%;width:0%;background:linear-gradient(90deg,#cc3a00,#ff6b35,#ffb347)"></div>
+            <div id="usdScanShimmer" style="position:absolute;top:0;bottom:0;left:-60%;width:60%;background:linear-gradient(90deg,transparent,rgba(255,180,60,0.55),transparent)"></div>
           </div>
-
-          <!-- Success Step with Animation -->
-          <div id="successStep" style="display: none;">
-            <div class="text-center py-5">
-              <!-- Success Checkmark Animation -->
-              <div class="success-checkmark mb-4">
-                <div class="check-icon">
-                  <span class="icon-line line-tip"></span>
-                  <span class="icon-line line-long"></span>
-                  <div class="icon-circle"></div>
-                  <div class="icon-fix"></div>
-                </div>
-              </div>
-
-              <h4 class="text-success mb-3">
-                <i class="fas fa-check-circle"></i> Giao dịch thành công!
-              </h4>
-              
-              <div class="card mb-3" style="background: #161b22; border: 1px solid #30363d;">
-                <div class="card-body">
-                  <p class="mb-2">
-                    <strong>Mã giao dịch:</strong> 
-                    <span id="transactionId" style="color: #00ff41; font-family: monospace; font-size: 14px;"></span>
-                  </p>
-                  <p class="mb-2">
-                    <strong>Loại tiền:</strong> 
-                    <span id="depositCurrency" class="text-warning"></span>
-                  </p>
-                  <p class="mb-2">
-                    <strong>Số tiền:</strong> 
-                    <span id="depositedAmount" class="text-success fs-5"></span>
-                  </p>
-                  <p class="mb-2">
-                    <strong>Nguồn:</strong> 
-                    <span id="depositSource"></span>
-                  </p>
-                  <p class="mb-0">
-                    <strong>Thời gian:</strong> 
-                    <span id="depositTime"></span>
-                  </p>
-                </div>
-              </div>
-
-              <button class="btn btn-success w-100" data-bs-dismiss="modal">
-                <i class="fas fa-check"></i> Hoàn tất
-              </button>
-            </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div id="usdStep0" style="font-size:12px;font-family:monospace;color:#555;transition:color 0.25s">○ Xác minh danh tính User...</div>
+            <div id="usdStep1" style="font-size:12px;font-family:monospace;color:#333;transition:color 0.25s">○ Kiểm tra số dư tài sản...</div>
+            <div id="usdStep2" style="font-size:12px;font-family:monospace;color:#333;transition:color 0.25s">○ Phát lệnh thu hồi WFB...</div>
+            <div id="usdStep3" style="font-size:12px;font-family:monospace;color:#333;transition:color 0.25s">○ Ghi nhật ký hệ thống...</div>
           </div>
+        </div>
+
+        <!-- Success state -->
+        <div id="usdWithdrawSuccessPanel" style="display:none;text-align:center;padding:12px 0 4px">
+          <div id="usdSuccessCheck" style="font-size:52px;color:#0f0;margin-bottom:6px;display:inline-block">✓</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#3a3a3a;margin-bottom:8px">Lệnh đã được thực thi</div>
+          <div id="usdSuccessAmt" style="font-size:30px;font-weight:bold;color:#ff6b35;font-family:monospace;margin-bottom:6px"></div>
+          <div id="usdSuccessFrom" style="font-size:12px;color:#555;margin-bottom:4px"></div>
+          <div id="usdSuccessTs" style="font-size:10px;color:#2a2a2a;font-family:monospace"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="wt-modal-overlay" id="settingsModal" style="display:none" onclick="closeSettingsModal(event)">
+    <div class="wt-modal" style="min-width:480px">
+      <div class="wt-modal-header">
+        <span>Cài đặt hệ thống</span>
+        <button class="wt-modal-close" onclick="closeSettings()">X</button>
+      </div>
+      <div class="wt-modal-body">
+        <div class="wt-settings-section">
+          <div class="wt-settings-title">HIỂN THỊ</div>
+          <div class="wt-settings-row">
+            <label class="wt-label">Số Users trên mỗi trang</label>
+            <select class="wt-select" id="cfg_pageSize">
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <div class="wt-settings-row">
+            <label class="wt-label">Tab mặc định khi mở</label>
+            <select class="wt-select" id="cfg_defaultTab">
+              <option value="top">Top Users</option>
+              <option value="whale">Whale Alerts</option>
+              <option value="withdraw">Chế Độ Rút</option>
+              <option value="stats">Thống kê</option>
+            </select>
+          </div>
+          <div class="wt-settings-row">
+            <label class="wt-label">Chế độ xem mặc định</label>
+            <select class="wt-select" id="cfg_defaultView">
+              <option value="table">Bảng</option>
+              <option value="card">Thẻ</option>
+            </select>
+          </div>
+        </div>
+        <div class="wt-settings-section">
+          <div class="wt-settings-title">TỰ ĐỘNG LÀM MỚI</div>
+          <div class="wt-settings-row">
+            <label class="wt-label">Chu kỳ làm mới dữ liệu</label>
+            <select class="wt-select" id="cfg_refresh">
+              <option value="30">30 giây</option>
+              <option value="60">60 giây</option>
+              <option value="120">2 phút</option>
+              <option value="300">5 phút</option>
+              <option value="0">Tắt</option>
+            </select>
+          </div>
+          <div class="wt-settings-row">
+            <label class="wt-label">Ngưỡng cảnh báo Whale (USD)</label>
+            <select class="wt-select" id="cfg_whaleThreshold">
+              <option value="1000000">$1M</option>
+              <option value="5000000">$5M</option>
+              <option value="10000000">$10M</option>
+              <option value="50000000">$50M</option>
+            </select>
+          </div>
+        </div>
+        <div class="wt-settings-section">
+          <div class="wt-settings-title">TRUY TÌM &amp; RÚT</div>
+          <div class="wt-settings-row">
+            <label class="wt-label">Ngưỡng phát hiện rút tiền (USD)</label>
+            <select class="wt-select" id="cfg_withdrawThreshold">
+              <option value="500000">$500K</option>
+              <option value="1000000">$1M</option>
+              <option value="5000000">$5M</option>
+            </select>
+          </div>
+          <div class="wt-settings-row">
+            <label class="wt-label">Chế độ theo dõi</label>
+            <select class="wt-select" id="cfg_trackMode">
+              <option value="all">Tất cả giao dịch</option>
+              <option value="whale_only">Chỉ cá voi (&gt;$10M)</option>
+              <option value="exchange">Chỉ sàn giao dịch</option>
+            </select>
+          </div>
+        </div>
+        <div class="wt-settings-section">
+          <div class="wt-settings-title">TÀI KHOẢN</div>
+          <div class="wt-settings-row">
+            <label class="wt-label">Đang đăng nhập</label>
+            <span class="wt-label" id="cfg_email" style="color:#aaa">--</span>
+          </div>
+          <div class="wt-settings-row">
+            <label class="wt-label">Phiên làm việc</label>
+            <span class="wt-label" id="cfg_session" style="color:#aaa">--</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button class="wt-btn" onclick="saveSettings()">Lưu cài đặt</button>
+          <button class="wt-btn" onclick="closeSettings()">Hủy</button>
+          <button class="wt-btn" style="margin-left:auto" onclick="resetAllData()">Reset dữ liệu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Detail Modal -->
+  <div class="wt-modal-overlay" id="detailModal" style="display:none" onclick="closeModal(event)">
+    <div class="wt-modal">
+      <div class="wt-modal-header">
+        <span id="modalTitle">Chi tiết ví</span>
+        <button class="wt-modal-close" onclick="closeDetailModal()">X</button>
+      </div>
+      <div class="wt-modal-body" id="modalBody"></div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="app.js"></script>
-  
+  <!-- Toast notification -->
+  <div id="wfbToast" style="position:fixed;bottom:28px;right:28px;background:#111;border:1px solid #ff6b35;color:#ff6b35;padding:10px 18px;font-size:12px;font-family:monospace;opacity:0;transform:translateY(12px);transition:opacity .3s,transform .3s;pointer-events:none;z-index:9999"></div>
+  <!-- PWA Service Worker registration -->
   <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      console.log('🚀 DOM Content Loaded');
-      
-      // ========================================
-      // DOUBLE CHECK AUTHENTICATION
-      // ========================================
-      if (localStorage.getItem("loggedIn") !== "true") {
-        console.log('❌ Not logged in - redirecting...');
-        window.location.replace("login.html");
-        return;
-      }
-      
-      // Verify password hash
-      const passwordHash = localStorage.getItem("passwordHash");
-      const validHash = "53d51dc5720d345c3c15c1cd4997814f";
-      
-      if (!passwordHash || passwordHash !== validHash) {
-        console.log('❌ Invalid password hash - clearing and redirecting...');
-        localStorage.clear();
-        window.location.replace("login.html");
-        return;
-      }
-      
-      console.log('✅ Authentication verified in DOMContentLoaded');
-      
-      // Display username
-      const username = localStorage.getItem("username");
-      const userEmail = localStorage.getItem("userEmail");
-      
-      if (username) {
-        document.getElementById("userEmail").textContent = username;
-      } else if (userEmail) {
-        document.getElementById("userEmail").textContent = userEmail;
-      }
-
-      // REMOVED: Default wallet address
-      // Only display wallet address after MetaMask connection
-      const savedWalletAddress = localStorage.getItem("walletAddress");
-      if (savedWalletAddress) {
-        const shortAddress = savedWalletAddress.substring(0, 6) + '...' + savedWalletAddress.substring(38);
-        document.getElementById("walletAddress").textContent = shortAddress;
-        document.getElementById("walletAddress").title = savedWalletAddress;
-        document.getElementById("walletStatus").textContent = "Connected";
-        // Show disconnect button
-        document.getElementById("disconnectBtn").style.display = "inline-block";
-        document.getElementById("connectBtn").style.display = "none";
-      } else {
-        // Show placeholder
-        document.getElementById("walletAddress").textContent = "--";
-        document.getElementById("walletStatus").textContent = "Connect Wallet";
-        // Show connect button
-        document.getElementById("disconnectBtn").style.display = "none";
-        document.getElementById("connectBtn").style.display = "inline-block";
-      }
-
-      // Logout function
-      window.logout = function() {
-        const savedUsername = localStorage.getItem("username");
-        // REMOVED: Don't save wallet address on logout
-        localStorage.clear();
-        if (savedUsername) {
-          localStorage.setItem("username", savedUsername);
-        }
-        window.location.href = "login.html";
-      };
-
-      // Global variables
-      let web3;
-      let userAccount = null;
-      let priceChart = null;
-      let currentCoinId = 'ethereum';
-      let currentTimeframe = '4H';
-      const USD_TO_VND_RATE = 25000; // Fixed exchange rate
-
-      // ========================================
-      // ENHANCED NETWORK FUNCTIONS - AUTO DETECT ANY NETWORK
-      // ========================================
-      
-      // Get network name from MetaMask directly or fallback to known list
-      async function getNetworkName(chainId) {
-        const id = typeof chainId === 'string' ? parseInt(chainId) : chainId;
-        
-        // Try to get network name from MetaMask provider
-        try {
-          if (window.ethereum && window.ethereum.networkVersion) {
-            // Try to get network name from MetaMask
-            const provider = window.ethereum;
-            
-            // Check if MetaMask has custom name for this network
-            if (provider.chainId) {
-              const hexChainId = typeof provider.chainId === 'string' ? provider.chainId : `0x${provider.chainId.toString(16)}`;
-              
-              // Try to get from window.ethereum properties
-              if (provider._metamask && provider._metamask.isUnlocked) {
-                // MetaMask is available, try to get network details
-                const networkDetails = await getNetworkDetailsFromMetaMask(id);
-                if (networkDetails) return networkDetails;
-              }
-            }
-          }
-        } catch (error) {
-          console.warn('Could not get network name from MetaMask:', error);
-        }
-        
-        // Fallback to known networks list (comprehensive)
-        const networks = {
-          // Ethereum Networks
-          1: 'Ethereum Mainnet',
-          
-          // Polygon (Matic)
-          137: 'Polygon Mainnet',
-          80001: 'Mumbai Testnet',
-          80002: 'Amoy Testnet',
-          
-          // Avalanche
-          43114: 'Avalanche C-Chain',
-          43113: 'Avalanche Fuji Testnet',
-          
-          // Arbitrum
-          42161: 'Arbitrum One',
-          421613: 'Arbitrum Goerli',
-          421614: 'Arbitrum Sepolia',
-          42170: 'Arbitrum Nova',
-          
-          // Optimism
-          10: 'Optimism',
-          420: 'Optimism Goerli',
-          11155420: 'Optimism Sepolia',
-          
-          // Fantom
-          250: 'Fantom Opera',
-          4002: 'Fantom Testnet',
-          
-          // Cronos
-          25: 'Cronos Mainnet',
-          338: 'Cronos Testnet',
-          
-          // Base
-          8453: 'Base Mainnet',
-          84531: 'Base Goerli',
-          84532: 'Base Sepolia',
-          
-          // zkSync
-          324: 'zkSync Era',
-          280: 'zkSync Era Testnet',
-          300: 'zkSync Sepolia',
-          
-          // Linea
-          59144: 'Linea Mainnet',
-          59140: 'Linea Goerli',
-          59141: 'Linea Sepolia',
-          
-          // Scroll
-          534352: 'Scroll',
-          534351: 'Scroll Sepolia',
-          
-          // Polygon zkEVM
-          1101: 'Polygon zkEVM',
-          1442: 'Polygon zkEVM Testnet',
-          2442: 'Polygon zkEVM Cardona',
-          
-          // Mantle
-          5000: 'Mantle',
-          5001: 'Mantle Testnet',
-          5003: 'Mantle Sepolia',
-          
-          // Gnosis Chain
-          100: 'Gnosis Chain',
-          10200: 'Chiado Testnet',
-          
-          // Aurora
-          1313161554: 'Aurora Mainnet',
-          1313161555: 'Aurora Testnet',
-          
-          // Celo
-          42220: 'Celo Mainnet',
-          44787: 'Alfajores Testnet',
-          62320: 'Celo Baklava',
-          
-          // Moonbeam
-          1284: 'Moonbeam',
-          1287: 'Moonbase Alpha',
-          1285: 'Moonriver',
-          
-          // Harmony
-          1666600000: 'Harmony Mainnet Shard 0',
-          1666700000: 'Harmony Testnet Shard 0',
-          
-          // Klaytn
-          8217: 'Klaytn Mainnet',
-          1001: 'Klaytn Baobab',
-          
-          // Metis
-          1088: 'Metis Andromeda',
-          599: 'Metis Goerli',
-          
-          // Filecoin
-          314: 'Filecoin Mainnet',
-          314159: 'Filecoin Calibration',
-          
-          // OKX Chain
-          66: 'OKXChain Mainnet',
-          65: 'OKXChain Testnet',
-          
-          // Heco
-          128: 'Heco Mainnet',
-          256: 'Heco Testnet',
-          
-          // Evmos
-          9001: 'Evmos',
-          9000: 'Evmos Testnet',
-          
-          // Kava
-          2222: 'Kava EVM',
-          2221: 'Kava EVM Testnet',
-          
-          // Boba Network
-          288: 'Boba Network',
-          2888: 'Boba Goerli',
-          
-          // Blast
-          81457: 'Blast',
-          168587773: 'Blast Sepolia',
-          
-          // Mode
-          34443: 'Mode',
-          919: 'Mode Testnet',
-          
-          // Manta Pacific
-          169: 'Manta Pacific',
-          3441005: 'Manta Pacific Testnet',
-          
-          // Taiko
-          167000: 'Taiko Mainnet',
-          167008: 'Taiko Katla',
-          167009: 'Taiko Jolnir',
-          
-          // ZetaChain
-          7000: 'ZetaChain Mainnet',
-          7001: 'ZetaChain Athens',
-          
-          // Connext
-          6398: 'Connext Sepolia',
-          
-          // Localhost
-          1337: 'Localhost 8545',
-          31337: 'Hardhat Network',
-          
-          // Berachain
-          80085: 'Berachain Artio',
-          
-          // PulseChain
-          369: 'PulseChain',
-          943: 'PulseChain Testnet',
-          
-          // Rootstock
-          30: 'Rootstock Mainnet',
-          31: 'Rootstock Testnet'
-        };
-        
-        return networks[id] || `Custom Network (Chain ID: ${id})`;
-      }
-
-      // Try to get network details from MetaMask API
-      async function getNetworkDetailsFromMetaMask(chainId) {
-        try {
-          // Request network details from MetaMask
-          const chainIdHex = `0x${chainId.toString(16)}`;
-          
-          // Try to switch to the network to get its details
-          // This won't actually switch, just get info if available
-          const provider = window.ethereum;
-          
-          // Check if we can get network name from RPC
-          if (web3) {
-            try {
-              const networkType = await web3.eth.net.getNetworkType();
-              if (networkType && networkType !== 'private') {
-                return networkType.charAt(0).toUpperCase() + networkType.slice(1);
-              }
-            } catch (e) {
-              // Network type not available
-            }
-          }
-          
-          return null;
-        } catch (error) {
-          return null;
-        }
-      }
-
-      // Get network icon with auto-detection
-      function getNetworkIcon(networkId) {
-        const chainId = typeof networkId === 'string' ? parseInt(networkId) : networkId;
-        
-        const icons = {
-          // Major Networks
-          1: '🔷', // Ethereum
-          56: '🟡', // BSC
-          137: '🟣', // Polygon
-          43114: '🔺', // Avalanche
-          42161: '🔵', // Arbitrum
-          10: '🔴', // Optimism
-          250: '👻', // Fantom
-          25: '⚡', // Cronos
-          100: '🟢', // Gnosis
-          8453: '🔵', // Base
-          324: '⚡', // zkSync
-          59144: '🔷', // Linea
-          534352: '📜', // Scroll
-          1101: '🟣', // Polygon zkEVM
-          5000: '🔷', // Mantle
-          1313161554: '🌈', // Aurora
-          42220: '🌿', // Celo
-          1284: '🌙', // Moonbeam
-          1088: '🔶', // Metis
-          81457: '💥', // Blast
-          169: '🌊', // Manta
-          7000: '⚡', // ZetaChain
-          6398: '🔗', // Connext
-          369: '💓', // PulseChain
-          
-          // Testnets
-          5: '🧪',
-          11155111: '🧪',
-          80001: '🧪',
-          97: '🧪',
-          
-          // Localhost
-          1337: '🏠',
-          31337: '🏠'
-        };
-        
-        return icons[chainId] || '🌐';
-      }
-
-      // Enhanced function to get FULL network info including custom networks
-      async function getFullNetworkInfo(chainId) {
-        const id = typeof chainId === 'string' ? parseInt(chainId) : chainId;
-        const name = await getNetworkName(id);
-        const icon = getNetworkIcon(id);
-        
-        // Additional info
-        const isTestnet = name.toLowerCase().includes('test') || 
-                         name.toLowerCase().includes('goerli') || 
-                         name.toLowerCase().includes('sepolia') ||
-                         name.toLowerCase().includes('mumbai');
-        
-        const isMainnet = !isTestnet && !name.toLowerCase().includes('localhost');
-        
-        return {
-          chainId: id,
-          hexChainId: `0x${id.toString(16)}`,
-          name: name,
-          icon: icon,
-          isTestnet: isTestnet,
-          isMainnet: isMainnet,
-          displayName: `${icon} ${name}`
-        };
-      }
-
-      // Update balance from blockchain
-      async function updateBalance() {
-        if (!web3 || !userAccount) {
-          console.log('⚠️ Web3 or account not initialized');
-          return;
-        }
-        
-        try {
-          console.log('🔄 Fetching balance...');
-          
-          // Get balance in Wei
-          const balanceWei = await web3.eth.getBalance(userAccount);
-          
-          // Convert to ETH
-          const balanceEth = web3.utils.fromWei(balanceWei, 'ether');
-          
-          // Format balance
-          const formattedBalance = parseFloat(balanceEth).toFixed(8);
-          
-          // Update UI
-          document.getElementById('balance').textContent = formattedBalance;
-          document.getElementById('balanceSell').textContent = formattedBalance;
-          
-          // Save to localStorage
-          localStorage.setItem('ethBalance', formattedBalance);
-          
-          console.log(`✅ Balance updated: ${formattedBalance} ETH`);
-          
-        } catch (error) {
-          console.error('❌ Error fetching balance:', error);
-          alert('❌ Không thể lấy số dư\n\nLỗi: ' + error.message);
-        }
-      }
-
-      // ========================================
-      // CHART INITIALIZATION
-      // ========================================
-      
-      function initializeChart() {
-        console.log('📊 Initializing chart...');
-        
-        const canvasElement = document.getElementById('priceChart');
-        
-        if (!canvasElement) {
-          console.error('❌ Canvas not found!');
-          setTimeout(initializeChart, 100);
-          return;
-        }
-
-        console.log('✅ Canvas found');
-        
-        const ctx = canvasElement.getContext('2d');
-        const container = canvasElement.parentElement;
-        canvasElement.width = container.clientWidth - 40;
-        canvasElement.height = 320;
-        
-        console.log('📏 Canvas size:', canvasElement.width, 'x', canvasElement.height);
-
-        priceChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
-            datasets: [{
-              label: 'ETH/USDT',
-              data: [2298, 2315, 2289, 2334, 2356, 2341, 2345],
-              borderColor: '#00ff41',
-              backgroundColor: 'rgba(0, 255, 65, 0.1)',
-              tension: 0.4,
-              fill: true,
-              pointBackgroundColor: '#00ff41',
-              pointBorderColor: '#00ff41',
-              pointHoverBackgroundColor: '#00cc33',
-              pointHoverBorderColor: '#00ff41',
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              borderWidth: 2
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                backgroundColor: '#0d1117',
-                borderColor: '#00ff41',
-                borderWidth: 1,
-                titleColor: '#00ff41',
-                bodyColor: '#e0e0e0',
-                padding: 12
-              }
-            },
-            scales: {
-              y: {
-                beginAtZero: false,
-                grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                ticks: { color: '#8b949e' }
-              },
-              x: {
-                grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                ticks: { color: '#8b949e' }
-              }
-            }
-          }
-        });
-
-        console.log('✅ Chart created');
-        
-        setTimeout(() => {
-          if (priceChart) {
-            priceChart.resize();
-            priceChart.update('active');
-            console.log('🔄 Chart rendered');
-          }
-        }, 100);
-      }
-
-      initializeChart();
-
-      // ========================================
-      // ENHANCED WALLET CONNECTION
-      // ========================================
-
-      window.connectWallet = async function() {
-        console.log('🔄 Attempting to connect wallet...');
-        
-        if (typeof window.ethereum === 'undefined') {
-          console.error('❌ MetaMask not found');
-          alert('⚠️ MetaMask chưa được cài đặt!\n\nVui lòng cài đặt MetaMask extension:\nhttps://metamask.io/download/');
-          window.open('https://metamask.io/download/', '_blank');
-          return;
-        }
-
-        try {
-          console.log('📡 Requesting account access...');
-          
-          const accounts = await window.ethereum.request({ 
-            method: 'eth_requestAccounts' 
-          });
-          
-          if (!accounts || accounts.length === 0) {
-            throw new Error('No accounts found');
-          }
-
-          userAccount = accounts[0];
-          console.log('✅ Connected account:', userAccount);
-          
-          web3 = new Web3(window.ethereum);
-          
-          const isConnected = await web3.eth.net.isListening();
-          if (!isConnected) {
-            throw new Error('Network connection failed');
-          }
-          
-          console.log('✅ Web3 initialized');
-          
-          // Get FULL network info including custom networks
-          const chainId = await web3.eth.getChainId();
-          const networkInfo = await getFullNetworkInfo(chainId);
-          
-          console.log('📡 Network Info:', networkInfo);
-          
-          // Save wallet address to localStorage
-          localStorage.setItem("walletAddress", userAccount);
-          localStorage.setItem("chainId", networkInfo.chainId.toString());
-          localStorage.setItem("networkName", networkInfo.name);
-          
-          // Update UI with real wallet address
-          const shortAddress = userAccount.substring(0, 6) + '...' + userAccount.substring(38);
-          document.getElementById("walletAddress").textContent = shortAddress;
-          document.getElementById("walletAddress").title = `${userAccount}\n\n${networkInfo.name}\nChain ID: ${networkInfo.chainId}\nHex: ${networkInfo.hexChainId}`;
-          document.getElementById("walletStatus").textContent = "Connected";
-          
-          document.getElementById("networkName").textContent = networkInfo.displayName;
-          document.getElementById("networkName").title = `${networkInfo.name}\nChain ID: ${networkInfo.chainId} (${networkInfo.hexChainId})\nType: ${networkInfo.isMainnet ? 'Mainnet' : networkInfo.isTestnet ? 'Testnet' : 'Custom'}`;
-          
-          await updateBalance();
-          setupMetaMaskListeners();
-          
-          alert(`✅ Kết nối thành công!\n\n👤 Tài khoản: ${userAccount}\n\n🌐 Mạng: ${networkInfo.name}\n📡 Chain ID: ${networkInfo.chainId} (${networkInfo.hexChainId})\n🏷️ Loại: ${networkInfo.isMainnet ? 'Mainnet' : networkInfo.isTestnet ? 'Testnet' : 'Custom Network'}\n\n💰 Số dư đã được cập nhật.`);
-          
-        } catch (error) {
-          console.error('❌ Connection error:', error);
-          
-          if (error.code === 4001) {
-            alert('❌ Bạn đã từ chối kết nối với MetaMask');
-          } else if (error.code === -32002) {
-            alert('⚠️ Yêu cầu kết nối đang chờ xử lý\n\nVui lòng mở MetaMask và chấp nhận kết nối.');
-          } else {
-            alert(`❌ Không thể kết nối với MetaMask\n\nLỗi: ${error.message}\n\nVui lòng thử lại hoặc kiểm tra MetaMask.`);
-          }
-        }
-      };
-
-      // Enhanced MetaMask listeners
-      function setupMetaMaskListeners() {
-        if (!window.ethereum) return;
-
-        window.ethereum.on('accountsChanged', async function (accounts) {
-          console.log('🔄 Account changed:', accounts);
-          
-          if (accounts.length === 0) {
-            console.log('❌ MetaMask disconnected');
-            document.getElementById("walletStatus").textContent = "Connect Wallet";
-            document.getElementById("walletAddress").textContent = "--";
-            document.getElementById("networkName").textContent = "--";
-            document.getElementById('balance').textContent = '0.0000';
-            document.getElementById('balanceSell').textContent = '0.0000';
-            
-            // Clear saved wallet
-            localStorage.removeItem("walletAddress");
-            localStorage.removeItem("chainId");
-            localStorage.removeItem("networkName");
-            localStorage.removeItem("ethBalance");
-            
-            userAccount = null;
-            web3 = null;
-          } else if (accounts[0] !== userAccount) {
-            userAccount = accounts[0];
-            localStorage.setItem("walletAddress", userAccount);
-            
-            const shortAddress = userAccount.substring(0, 6) + '...' + userAccount.substring(38);
-            document.getElementById("walletAddress").textContent = shortAddress;
-            document.getElementById("walletAddress").title = userAccount;
-            
-            await updateBalance();
-            alert(`🔄 Đã chuyển sang tài khoản:\n${userAccount}`);
-          }
-        });
-        
-        window.ethereum.on('chainChanged', async (_chainId) => {
-          console.log('🔄 Chain changed to:', _chainId);
-          
-          const chainId = typeof _chainId === 'string' && _chainId.startsWith('0x') 
-            ? parseInt(_chainId, 16) 
-            : parseInt(_chainId);
-          
-          const networkInfo = await getFullNetworkInfo(chainId);
-          
-          console.log('📡 New Network:', networkInfo);
-          
-          localStorage.setItem("chainId", networkInfo.chainId.toString());
-          localStorage.setItem("networkName", networkInfo.name);
-          
-          document.getElementById("networkName").textContent = networkInfo.displayName;
-          document.getElementById("networkName").title = `${networkInfo.name}\nChain ID: ${networkInfo.chainId} (${networkInfo.hexChainId})\nType: ${networkInfo.isMainnet ? 'Mainnet' : networkInfo.isTestnet ? 'Testnet' : 'Custom'}`;
-          
-          if (userAccount && typeof window.ethereum !== 'undefined') {
-            web3 = new Web3(window.ethereum);
-            await updateBalance();
-          }
-          
-          alert(`🔄 Đã chuyển mạng!\n\n🌐 Mạng mới: ${networkInfo.name}\n📡 Chain ID: ${networkInfo.chainId} (${networkInfo.hexChainId})\n🏷️ Loại: ${networkInfo.isMainnet ? 'Mainnet' : networkInfo.isTestnet ? 'Testnet' : 'Custom Network'}\n\n💰 Số dư đã được cập nhật.`);
-        });
-
-        window.ethereum.on('disconnect', () => {
-          console.log('❌ MetaMask disconnected');
-          document.getElementById("networkName").textContent = "--";
-          document.getElementById("walletAddress").textContent = "--";
-          userAccount = null;
-          web3 = null;
-        });
-      }
-
-      // Enhanced auto-connect - Only if wallet was previously connected
-      async function autoConnectWallet() {
-        const savedWallet = localStorage.getItem("walletAddress");
-        
-        if (!savedWallet || typeof window.ethereum === 'undefined') {
-          console.log('ℹ️ No saved wallet or MetaMask not installed');
-          return;
-        }
-
-        try {
-          console.log('🔄 Auto-connecting...');
-          
-          // Check if MetaMask is still connected to this address
-          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-          
-          if (accounts.length > 0 && accounts[0].toLowerCase() === savedWallet.toLowerCase()) {
-            userAccount = accounts[0];
-            web3 = new Web3(window.ethereum);
-            
-            const chainId = await web3.eth.getChainId();
-            const networkInfo = await getFullNetworkInfo(chainId);
-            
-            const shortAddress = userAccount.substring(0, 6) + '...' + userAccount.substring(38);
-            document.getElementById("walletAddress").textContent = shortAddress;
-            document.getElementById("walletAddress").title = `${userAccount}\n\n${networkInfo.name}\nChain ID: ${networkInfo.chainId}`;
-            document.getElementById("walletStatus").textContent = "Đã kết nối";
-            
-            document.getElementById("networkName").textContent = networkInfo.displayName;
-            document.getElementById("networkName").title = `${networkInfo.name}\nChain ID: ${networkInfo.chainId} (${networkInfo.hexChainId})`;
-            
-            localStorage.setItem("chainId", networkInfo.chainId.toString());
-            localStorage.setItem("networkName", networkInfo.name);
-            
-            await updateBalance();
-            setupMetaMaskListeners();
-            
-            console.log(`✅ Auto-connected successfully to ${networkInfo.name}`);
-          } else {
-            // Wallet not connected anymore, clear saved data
-            console.log('⚠️ Saved wallet not connected, clearing data');
-            localStorage.removeItem("walletAddress");
-            localStorage.removeItem("chainId");
-            localStorage.removeItem("networkName");
-            localStorage.removeItem("ethBalance");
-            document.getElementById("walletAddress").textContent = "--";
-            document.getElementById("networkName").textContent = "--";
-          }
-        } catch (error) {
-          console.error('❌ Auto-connect failed:', error);
-          // Clear saved data on error
-          localStorage.removeItem("walletAddress");
-          localStorage.removeItem("chainId");
-          localStorage.removeItem("networkName");
-          document.getElementById("walletAddress").textContent = "--";
-          document.getElementById("networkName").textContent = "--";
-               }
-      }
-
-      // Click wallet address to copy
-      document.getElementById("walletAddress").addEventListener("click", function() {
-        const fullAddress = localStorage.getItem("walletAddress");
-        if (fullAddress && fullAddress !== "--") {
-          navigator.clipboard.writeText(fullAddress).then(() => {
-            const originalText = this.textContent;
-            this.textContent = "✓ Copied";
-            setTimeout(() => {
-              const shortAddress = fullAddress.substring(0, 6) + '...' + fullAddress.substring(38);
-              this.textContent = shortAddress;
-            }, 2000);
-          });
-        }
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js')
+          .then(function (reg) { console.log('[PWA] SW registered', reg.scope); })
+          .catch(function (err) { console.warn('[PWA] SW failed:', err); });
       });
-      document.getElementById("walletAddress").style.cursor = "pointer";
-
-      // Load real prices from CoinGecko
-      async function loadRealPrice() {
-        try {
-          const coins = 'ethereum,bitcoin,binancecoin,solana,ripple,cardano,dogecoin,matic-network,polkadot,avalanche-2,chainlink,uniswap,litecoin,cosmos,shiba-inu';
-          const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coins}&vs_currencies=usd&include_24hr_change=true`);
-          const data = await response.json();
-          
-          // Update all market items
-          document.querySelectorAll('.market-item').forEach(item => {
-            const coinId = item.dataset.coin;
-            if (data[coinId]) {
-              const price = data[coinId].usd;
-              const change = data[coinId].usd_24h_change;
-              
-              const priceElement = item.querySelector('.price-up, .price-down');
-              const changeElement = item.querySelector('small');
-              
-              let formattedPrice;
-              if (price < 0.001) {
-                formattedPrice = `$${price.toFixed(8)}`;
-              } else if (price < 1) {
-                formattedPrice = `$${price.toFixed(4)}`;
-              } else if (price < 100) {
-                formattedPrice = `$${price.toFixed(2)}`;
-              } else {
-                formattedPrice = `$${price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-              }
-              
-              priceElement.textContent = formattedPrice;
-              priceElement.className = change >= 0 ? 'price-up' : 'price-down';
-              
-
-              changeElement.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
-              changeElement.className = change >= 0 ? 'text-success' : 'text-danger';
-            }
-          });
-          
-          // Update main display for ETH
-          const ethPrice = data.ethereum.usd;
-          document.getElementById('currentPrice').textContent = `$${ethPrice.toLocaleString()}`;
-          document.getElementById('buyPrice').value = ethPrice.toFixed(2);
-          document.getElementById('sellPrice').value = ethPrice.toFixed(2);
-          
-          console.log('✅ Prices updated');
-        } catch (error) {
-          console.error('❌ Error loading prices:', error);
-        }
-      }
-
-      // Load chart data
-      async function loadChartData() {
-        await loadChartDataForCoin('ethereum');
-      }
-
-      // Load chart data with timeframe
-      async function loadChartDataForCoin(coinId, timeframe = '4H') {
-        if (!priceChart) {
-          console.warn('⚠️ Chart not initialized yet');
-          return;
-        }
-        
-        currentCoinId = coinId;
-        currentTimeframe = timeframe;
-        
-        try {
-          // Map timeframe to API parameters
-          const timeframeMap = {
-            '1H': { days: 1, interval: 'hourly', sliceCount: 24 },
-            '4H': { days: 1, interval: 'hourly', sliceCount: 6 },
-            '1D': { days: 30, interval: 'daily', sliceCount: 30 },
-            '1W': { days: 90, interval: 'daily', sliceCount: 12 }
-          };
-          
-          const params = timeframeMap[timeframe] || timeframeMap['4H'];
-          
-          console.log(`📊 Loading ${timeframe} chart for ${coinId}...`);
-          
-          const response = await fetch(
-            `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${params.days}&interval=${params.interval}`
-          );
-          const data = await response.json();
-          
-          // Process data based on timeframe
-          let prices = data.prices;
-          
-          if (timeframe === '1H') {
-            // Last 24 hours, show every hour
-            prices = prices.slice(-24);
-          } else if (timeframe === '4H') {
-            // Last 24 hours, show every 4 hours
-            prices = prices.filter((_, index) => index % 4 === 0).slice(-6);
-          } else if (timeframe === '1D') {
-            // Last 30 days
-            prices = prices.slice(-30);
-          } else if (timeframe === '1W') {
-            // Last 12 weeks
-            prices = prices.filter((_, index) => index % 7 === 0).slice(-12);
-          }
-          
-          const labels = prices.map((p) => {
-            const date = new Date(p[0]);
-            
-            if (timeframe === '1H' || timeframe === '4H') {
-              return `${date.getHours().toString().padStart(2, '0')}:00`;
-            } else if (timeframe === '1D') {
-              return `${date.getDate()}/${date.getMonth() + 1}`;
-            } else if (timeframe === '1W') {
-              return `W${Math.ceil(date.getDate() / 7)} ${date.toLocaleString('default', { month: 'short' })}`;
-            }
-          });
-          
-          const values = prices.map(p => p[1]);
-          
-          priceChart.data.labels = labels;
-          priceChart.data.datasets[0].data = values;
-          priceChart.update('active');
-          
-          console.log(`✅ Chart updated for ${coinId} (${timeframe}): ${values.length} points`);
-        } catch (error) {
-          console.error('❌ Error loading chart:', error);
-        }
-      }
-
-      // Add timeframe button listeners
-      document.querySelectorAll('.btn-group button[data-timeframe]').forEach(button => {
-        button.addEventListener('click', function() {
-          // Remove active class from all buttons
-          document.querySelectorAll('.btn-group button[data-timeframe]').forEach(btn => {
-            btn.classList.remove('active');
-          });
-          
-          // Add active class to clicked button
-          this.classList.add('active');
-          
-          // Get timeframe and reload chart
-          const timeframe = this.getAttribute('data-timeframe');
-          currentTimeframe = timeframe;
-          
-          console.log(`📊 Switching to ${timeframe} timeframe`);
-          loadChartDataForCoin(currentCoinId, timeframe);
-        });
-      });
-
-      // Update market item click handler
-      document.querySelectorAll('.market-item').forEach(item => {
-        item.addEventListener('click', function() {
-          document.querySelectorAll('.market-item').forEach(i => i.classList.remove('active'));
-          this.classList.add('active');
-          
-          const pair = this.dataset.pair;
-          const price = this.querySelector('.price-up, .price-down').textContent.replace(/[$,]/g, '');
-          const coinId = this.dataset.coin;
-          
-          document.getElementById('currentPrice').textContent = `$${parseFloat(price).toLocaleString()}`;
-          document.getElementById('buyPrice').value = parseFloat(price).toFixed(2);
-          document.getElementById('sellPrice').value = parseFloat(price).toFixed(2);
-          document.querySelector('.chart-header h5').textContent = pair;
-          
-          // Keep current timeframe when switching coins
-          loadChartDataForCoin(coinId, currentTimeframe);
-        });
-      });
-
-      // ========================================
-      // BANK DEPOSIT FUNCTIONS WITH MODERN LOADING
-      // ========================================
-
-      // Currency type change handler
-      document.getElementById('depositCurrencyType').addEventListener('change', function() {
-        const type = this.value;
-        console.log('💱 Currency type changed to:', type);
-        if (type === 'VND') {
-          document.getElementById('vndDepositSection').style.display = 'block';
-          document.getElementById('usdtDepositSection').style.display = 'none';
-        } else {
-          document.getElementById('vndDepositSection').style.display = 'none';
-          document.getElementById('usdtDepositSection').style.display = 'block';
-        }
-      });
-
-      // Open bank deposit modal
-      window.openBankDepositModal = function() {
-        console.log('🏦 Opening deposit modal...');
-        
-        // Reset form
-        document.getElementById('depositCurrencyType').value = 'VND';
-        document.getElementById('bankSelect').value = '';
-        document.getElementById('depositAmountVND').value = '';
-        document.getElementById('accountNumber').value = '';
-        document.getElementById('accountName').value = '';
-        document.getElementById('depositAmountUSDT').value = '';
-        document.getElementById('senderWallet').value = '';
-        document.getElementById('networkSelect').value = 'TRC20';
-        
-        // Show sections
-        document.getElementById('vndDepositSection').style.display = 'block';
-        document.getElementById('usdtDepositSection').style.display = 'none';
-        
-        // Show selection step, hide others
-        document.getElementById('depositSelectionStep').style.display = 'block';
-        document.getElementById('loadingStep').style.display = 'none';
-        document.getElementById('successStep').style.display = 'none';
-        
-        // Open modal
-        try {
-          const modal = new bootstrap.Modal(document.getElementById('bankDepositModal'));
-          modal.show();
-          console.log('✅ Modal opened successfully');
-        } catch (error) {
-          console.error('❌ Error opening modal:', error);
-          alert('Lỗi mở modal: ' + error.message);
-        }
-      };
-
-      // Process deposit with modern loading
-      window.processDeposit = async function() {
-        console.log('🔄 Processing deposit...');
-        
-        const currencyType = document.getElementById('depositCurrencyType').value;
-        
-        let amount, source, validation;
-        
-        if (currencyType === 'VND') {
-          const bank = document.getElementById('bankSelect').value;
-          amount = document.getElementById('depositAmountVND').value;
-          const accountNumber = document.getElementById('accountNumber').value;
-          const accountName = document.getElementById('accountName').value;
-          
-          // Validation
-          if (!bank) {
-            alert('⚠️ Vui lòng chọn ngân hàng!');
-            return;
-          }
-          if (!amount || parseFloat(amount) < 50000) {
-            alert('⚠️ Số tiền nhận tối thiểu là 50,000 VND!');
-            return;
-          }
-          if (!accountNumber || accountNumber.length < 6) {
-            alert('⚠️ Số tài khoản không hợp lệ!');
-            return;
-          }
-          if (!accountName || accountName.trim().length < 3) {
-            alert('⚠️ Tên chủ tài khoản không hợp lệ!');
-            return;
-          }
-          
-          const bankNames = {
-            'vcb': 'Vietcombank', 'tcb': 'Techcombank', 'mb': 'MB Bank',
-            'acb': 'ACB', 'vib': 'VIB', 'bidv': 'BIDV',
-            'agribank': 'Agribank', 'tpbank': 'TPBank',
-            'sacombank': 'Sacombank', 'vietinbank': 'VietinBank'
-          };
-          source = bankNames[bank];
-          validation = { bank, accountNumber, accountName };
-          
-        } else {
-          const network = document.getElementById('networkSelect').value;
-          amount = document.getElementById('depositAmountUSDT').value;
-          const senderWallet = document.getElementById('senderWallet').value;
-          
-          // Validation
-          if (!amount || parseFloat(amount) < 10) {
-            alert('⚠️ Số tiền nhận tối thiểu là 10 USDT!');
-            return;
-          }
-          if (!senderWallet || senderWallet.length < 20) {
-            alert('⚠️ Địa chỉ ví không hợp lệ!');
-            return;
-          }
-          
-          source = `${network} Network`;
-          validation = { network, senderWallet };
-        }
-
-        console.log('✅ Validation passed, starting loading...');
-
-        // Hide selection, show loading
-        document.getElementById('depositSelectionStep').style.display = 'none';
-        document.getElementById('loadingStep').style.display = 'block';
-
-        // Reset loading steps
-        document.getElementById('progressPercentage').textContent = '0%';
-        document.getElementById('progressCircle').style.strokeDashoffset = '339.292';
-        document.getElementById('loadingMessage').textContent = 'Đang kết nối với hệ thống thanh toán...';
-        
-        // Reset step icons
-        ['step1', 'step2', 'step3', 'step4'].forEach((stepId, index) => {
-          const stepEl = document.getElementById(stepId);
-          stepEl.style.opacity = index === 0 ? '1' : '0.5';
-          const icon = stepEl.querySelector('i');
-          if (index === 0) {
-            icon.className = 'fas fa-circle-notch fa-spin text-warning';
-          } else {
-            icon.className = 'fas fa-circle text-muted';
-          }
-        });
-
-        // Animate loading with steps
-        const messages = [
-          'Đang xác thực thông tin...',
-          'Kết nối với blockchain...',
-          'Xác nhận giao dịch...',
-          'Hoàn tất xử lý...'
-        ];
-        
-        let currentStep = 0;
-        let progress = 0;
-        
-        const updateProgress = () => {
-          progress += Math.random() * 15 + 5;
-          if (progress > 95) progress = 95;
-          
-          // Update circular progress
-          const circumference = 339.292;
-          const offset = circumference - (progress / 100) * circumference;
-          document.getElementById('progressCircle').style.strokeDashoffset = offset;
-          document.getElementById('progressPercentage').textContent = Math.floor(progress) + '%';
-          
-          // Update step icons
-          if (progress > 25 && currentStep < 1) {
-            currentStep = 1;
-            updateStepIcon(1);
-            document.getElementById('loadingMessage').textContent = messages[1];
-          } else if (progress > 50 && currentStep < 2) {
-            currentStep = 2;
-            updateStepIcon(2);
-            document.getElementById('loadingMessage').textContent = messages[2];
-          } else if (progress > 75 && currentStep < 3) {
-            currentStep = 3;
-            updateStepIcon(3);
-            document.getElementById('loadingMessage').textContent = messages[3];
-          }
-        };
-        
-        const updateStepIcon = (step) => {
-          const stepEl = document.getElementById(`step${step}`);
-          stepEl.style.opacity = '1';
-          stepEl.querySelector('i').className = 'fas fa-check-circle text-success';
-          
-          if (step < 4) {
-            const nextStep = document.getElementById(`step${step + 1}`);
-            nextStep.style.opacity = '1';
-            nextStep.querySelector('i').className = 'fas fa-circle-notch fa-spin text-warning';
-          }
-        };
-
-        const progressInterval = setInterval(updateProgress, 200);
-
-        // Simulate processing (2-4 seconds)
-        const processingTime = 2000 + Math.random() * 2000;
-        
-        setTimeout(() => {
-          clearInterval(progressInterval);
-          
-          // Complete progress
-          document.getElementById('progressCircle').style.strokeDashoffset = '0';
-          document.getElementById('progressPercentage').textContent = '100%';
-          updateStepIcon(4);
-
-          setTimeout(() => {
-            // Generate transaction
-            const txId = 'TXN' + Date.now() + Math.floor(Math.random() * 10000);
-            
-            const transaction = {
-              id: txId,
-              type: currencyType === 'VND' ? 'bank_deposit' : 'crypto_deposit',
-              currency: currencyType,
-              amount: parseFloat(amount),
-              source: source,
-              ...validation,
-              timestamp: Date.now(),
-              status: 'completed'
-            };
-
-            const history = JSON.parse(localStorage.getItem('transactionHistory') || '[]');
-            history.push(transaction);
-            localStorage.setItem('transactionHistory', JSON.stringify(history));
-
-            // Update balance
-            const currentBalance = parseFloat(localStorage.getItem('usdtBalance') || '10000');
-            let newBalance;
-            
-            if (currencyType === 'VND') {
-              newBalance = currentBalance + (parseFloat(amount) / 25000);
-            } else {
-              newBalance = currentBalance + parseFloat(amount);
-            }
-            
-            localStorage.setItem('usdtBalance', newBalance.toFixed(4));
-
-            // Show success
-            document.getElementById('loadingStep').style.display = 'none';
-            document.getElementById('successStep').style.display = 'block';
-            
-            // Fill success info
-            document.getElementById('transactionId').textContent = txId;
-            document.getElementById('depositCurrency').textContent = currencyType;
-            document.getElementById('depositedAmount').textContent = 
-              currencyType === 'VND' 
-                ? parseFloat(amount).toLocaleString() + ' VND'
-                : parseFloat(amount).toFixed(2) + ' USDT';
-            document.getElementById('depositSource').textContent = source;
-            document.getElementById('depositTime').textContent = new Date().toLocaleString('vi-VN');
-
-            // Reload histories
-            loadOrderHistory();
-            loadTradeHistory();
-            
-            // Update balance display
-            const buyCurrency = document.getElementById('buyCurrency').value;
-            if (buyCurrency === 'USDT') {
-              document.getElementById('balance').textContent = newBalance.toFixed(4);
-            } else {
-              document.getElementById('balance').textContent = (newBalance * 25000).toLocaleString();
-            }
-
-            console.log('✅ Deposit completed:', transaction);
-          }, 500);
-        }, processingTime);
-      };
-
-      // ========================================
-      // CURRENCY SELECTION HANDLERS
-      // ========================================
-      
-      const buyCurrencySelect = document.getElementById('buyCurrency');
-      const sellCurrencySelect = document.getElementById('sellCurrency');
-      
-      // Buy currency change
-      buyCurrencySelect.addEventListener('change', function() {
-        const currency = this.value;
-        const price = parseFloat(buyPriceInput.value) || 0;
-        
-        if (currency === 'VND') {
-          // Convert to VND
-          const priceVND = (price * USD_TO_VND_RATE).toFixed(0);
-          buyPriceInput.value = priceVND;
-          document.getElementById('buyPriceCurrency').textContent = 'VND';
-          document.getElementById('buyTotalCurrency').textContent = 'VND';
-          document.getElementById('buyExchangeRate').textContent = `Tỷ giá: 1 USD = ${USD_TO_VND_RATE.toLocaleString()} VND`;
-          
-          // Update balance display (simulate VND balance)
-          const usdtBalance = parseFloat(localStorage.getItem('usdtBalance') || '10000');
-          const vndBalance = (usdtBalance * USD_TO_VND_RATE).toFixed(0);
-          document.getElementById('balance').textContent = parseFloat(vndBalance).toLocaleString();
-          document.getElementById('balanceCurrency').textContent = 'VND';
-        } else {
-          // Convert to USDT
-          const priceUSDT = (price / USD_TO_VND_RATE).toFixed(2);
-          buyPriceInput.value = priceUSDT;
-          document.getElementById('buyPriceCurrency').textContent = 'USDT';
-          document.getElementById('buyTotalCurrency').textContent = 'USDT';
-          document.getElementById('buyExchangeRate').textContent = `Tỷ giá: 1 USD = ${USD_TO_VND_RATE.toLocaleString()} VND`;
-          
-          // Update balance display
-          const usdtBalance = parseFloat(localStorage.getItem('usdtBalance') || '10000');
-          document.getElementById('balance').textContent = usdtBalance.toFixed(4);
-          document.getElementById('balanceCurrency').textContent = 'USDT';
-        }
-        
-        // Recalculate total
-        updateBuyTotal();
-      });
-      
-      // Sell currency change
-      sellCurrencySelect.addEventListener('change', function() {
-        const currency = this.value;
-        const price = parseFloat(sellPriceInput.value) || 0;
-        
-        if (currency === 'VND') {
-          // Convert to VND
-          const priceVND = (price * USD_TO_VND_RATE).toFixed(0);
-          sellPriceInput.value = priceVND;
-          document.getElementById('sellPriceCurrency').textContent = 'VND';
-          document.getElementById('sellTotalCurrency').textContent = 'VND';
-          document.getElementById('sellExchangeRate').textContent = `Tỷ giá: 1 USD = ${USD_TO_VND_RATE.toLocaleString()} VND`;
-        } else {
-          // Convert to USDT
-          const priceUSDT = (price / USD_TO_VND_RATE).toFixed(2);
-          sellPriceInput.value = priceUSDT;
-          document.getElementById('sellPriceCurrency').textContent = 'USDT';
-          document.getElementById('sellTotalCurrency').textContent = 'USDT';
-          document.getElementById('sellExchangeRate').textContent = `Tỷ giá: 1 USD = ${USD_TO_VND_RATE.toLocaleString()} VND`;
-        }
-        
-        // Recalculate total
-        updateSellTotal();
-      });
-
-      // ========================================
-      // FIX: AUTO-CALCULATE TOTAL - BUY TAB
-      // ========================================
-      
-      const buyAmountInput = document.getElementById('buyAmount');
-      const buyPriceInput = document.getElementById('buyPrice');
-      const buyTotalInput = document.getElementById('buyTotal');
-      const buyPercentageSlider = document.getElementById('buyPercentage');
-      
-      function updateBuyTotal() {
-        const price = parseFloat(buyPriceInput.value) || 0;
-        const amount = parseFloat(buyAmountInput.value) || 0;
-        const currency = buyCurrencySelect.value;
-        
-        const total = (price * amount).toFixed(currency === 'VND' ? 0 : 2);
-        buyTotalInput.value = total;
-        
-        console.log(`💰 Buy Total: ${amount} ETH × ${price} ${currency} = ${total} ${currency}`);
-      }
-      
-      // Update total when amount changes
-      buyAmountInput.addEventListener('input', updateBuyTotal);
-      
-      // Update total when price changes
-      buyPriceInput.addEventListener('input', updateBuyTotal);
-
-      // Slider for BUY
-      buyPercentageSlider.addEventListener('input', function() {
-        const percentage = parseFloat(this.value);
-        const balanceText = document.getElementById('balance').textContent.replace(/,/g, '');
-        const balance = parseFloat(balanceText) || 0;
-        const price = parseFloat(buyPriceInput.value) || 0;
-        
-        if (price > 0 && balance > 0) {
-          const maxAmount = balance / price;
-          const amount = (maxAmount * percentage / 100).toFixed(8);
-          buyAmountInput.value = amount;
-          updateBuyTotal();
-          
-          console.log(`📊 Buy Slider: ${percentage}% → ${amount} ETH`);
-        }
-      });
-
-      // ========================================
-      // FIX: AUTO-CALCULATE TOTAL - SELL TAB
-      // ========================================
-      
-      const sellAmountInput = document.getElementById('sellAmount');
-      const sellPriceInput = document.getElementById('sellPrice');
-      const sellTotalInput = document.getElementById('sellTotal');
-      const sellPercentageSlider = document.getElementById('sellPercentage');
-      
-      function updateSellTotal() {
-        const price = parseFloat(sellPriceInput.value) || 0;
-        const amount = parseFloat(sellAmountInput.value) || 0;
-        const currency = sellCurrencySelect.value;
-        
-        const total = (price * amount).toFixed(currency === 'VND' ? 0 : 2);
-        sellTotalInput.value = total;
-        
-        console.log(`💰 Sell Total: ${amount} ETH × ${price} ${currency} = ${total} ${currency}`);
-      }
-      
-      // Update total when amount changes
-      sellAmountInput.addEventListener('input', updateSellTotal);
-      
-      // Update total when price changes
-      sellPriceInput.addEventListener('input', updateSellTotal);
-
-      // Slider for SELL
-      sellPercentageSlider.addEventListener('input', function() {
-        const percentage = parseFloat(this.value);
-        const balance = parseFloat(document.getElementById('balanceSell').textContent) || 0;
-        const amount = (balance * percentage / 100).toFixed(8);
-        
-        sellAmountInput.value = amount;
-        updateSellTotal();
-        
-        console.log(`📊 Sell Slider: ${percentage}% → ${amount} ETH`);
-      });
-
-      // ========================================
-      // UPDATE: deposit/withdraw functions with currency
-      // ========================================
-      
-      window.depositETH = async function() {
-        const amount = buyAmountInput.value;
-        const currency = buyCurrencySelect.value;
-        
-        if (!amount || parseFloat(amount) <= 0) {
-          alert('⚠️ Vui lòng nhập số lượng ETH hợp lệ');
-          return;
-        }
-        
-        const price = parseFloat(buyPriceInput.value) || 0;
-        const actualPrice = price * (1 + (Math.random() - 0.5) * 0.002);
-        const total = (actualPrice * parseFloat(amount)).toFixed(currency === 'VND' ? 0 : 2);
-        
-        // Get balance and check
-        const balanceText = document.getElementById('balance').textContent.replace(/,/g, '');
-        const currentBalance = parseFloat(balanceText) || 0;
-        const totalCost = parseFloat(total);
-        
-        if (totalCost > currentBalance) {
-          alert(`❌ Số dư không đủ!\n\nSố dư: ${currentBalance.toLocaleString()} ${currency}\nCần: ${totalCost.toLocaleString()} ${currency}`);
-          return;
-        }
-        
-        const confirmMsg = currency === 'VND' 
-          ? `Xác nhận mua ${amount} ETH?\n\n💵 Nguồn: VND (Ngân hàng)\n📊 Giá: ${parseFloat(actualPrice).toLocaleString()} VND/ETH\n💰 Tổng: ${parseFloat(total).toLocaleString()} VND\n\n🔄 Tỷ giá: 1 USD = ${USD_TO_VND_RATE.toLocaleString()} VND`
-          : `Xác nhận mua ${amount} ETH?\n\n💵 Nguồn: USDT (Crypto)\n📊 Giá: $${actualPrice.toFixed(2)}/ETH\n💰 Tổng: $${parseFloat(total).toLocaleString()} USDT`;
-        
-        if (confirm(confirmMsg)) {
-          const transaction = {
-            type: 'deposit',
-            amount: amount,
-            price: actualPrice.toFixed(currency === 'VND' ? 0 : 2),
-            total: total,
-            currency: currency,
-            pair: document.querySelector('.market-item.active').dataset.pair,
-            timestamp: Date.now(),
-            txHash: `0x${Math.random().toString(16).substr(2, 64)}`,
-            status: 'completed'
-          };
-          
-          const history = JSON.parse(localStorage.getItem('transactionHistory') || '[]');
-          history.push(transaction);
-          localStorage.setItem('transactionHistory', JSON.stringify(history));
-          
-          // Update balance
-          const newBalance = currentBalance - totalCost;
-          if (currency === 'VND') {
-            const usdtBalance = newBalance / USD_TO_VND_RATE;
-            localStorage.setItem('usdtBalance', usdtBalance.toFixed(4));
-            document.getElementById('balance').textContent = newBalance.toLocaleString();
-          } else {
-            localStorage.setItem('usdtBalance', newBalance.toFixed(4));
-            document.getElementById('balance').textContent = newBalance.toFixed(4);
-          }
-          
-          loadOrderHistory();
-          loadTradeHistory();
-          
-          const successMsg = currency === 'VND'
-            ? `✅ Đã mua ${amount} ETH thành công!\n\n💵 Nguồn: VND\n📊 Giá: ${parseFloat(actualPrice).toLocaleString()} VND\n💰 Tổng: ${parseFloat(total).toLocaleString()} VND\n\n🔗 Tx: ${transaction.txHash.substring(0, 20)}...`
-            : `✅ Đã mua ${amount} ETH thành công!\n\n💵 Nguồn: USDT\n📊 Giá: $${actualPrice.toFixed(2)}\n💰 Tổng: $${parseFloat(total).toLocaleString()}\n\n🔗 Tx: ${transaction.txHash.substring(0, 20)}...`;
-          
-          alert(successMsg);
-          
-          // Reset form
-          buyAmountInput.value = '';
-          buyTotalInput.value = '';
-          buyPercentageSlider.value = 0;
-        }
-      };
-
-      window.withdrawETH = async function() {
-        const amount = sellAmountInput.value;
-        const currency = sellCurrencySelect.value;
-        
-        if (!amount || parseFloat(amount) <= 0) {
-          alert('⚠️ Vui lòng nhập số lượng ETH hợp lệ');
-          return;
-        }
-        
-        const currentBalance = parseFloat(document.getElementById('balanceSell').textContent);
-        if (parseFloat(amount) > currentBalance) {
-          alert(`❌ Số dư ETH không đủ!\n\nSố dư: ${currentBalance} ETH\nMuốn bán: ${amount} ETH`);
-          return;
-        }
-        
-        const price = parseFloat(sellPriceInput.value) || 0;
-        const actualPrice = price * (1 + (Math.random() - 0.5) * 0.002);
-        const total = (actualPrice * parseFloat(amount)).toFixed(currency === 'VND' ? 0 : 2);
-        
-        const confirmMsg = currency === 'VND'
-          ? `Xác nhận bán ${amount} ETH?\n\n💵 Nhận vào: VND (Ngân hàng)\n📊 Giá: ${parseFloat(actualPrice).toLocaleString()} VND/ETH\n💰 Tổng: ${parseFloat(total).toLocaleString()} VND\n\n🔄 Tỷ giá: 1 USD = ${USD_TO_VND_RATE.toLocaleString()} VND`
-          : `Xác nhận bán ${amount} ETH?\n\n💵 Nhận vào: USDT (Crypto)\n📊 Giá: $${actualPrice.toFixed(2)}/ETH\n💰 Tổng: $${parseFloat(total).toLocaleString()} USDT`;
-        
-        if (confirm(confirmMsg)) {
-          const transaction = {
-            type: 'withdraw',
-            amount: amount,
-            price: actualPrice.toFixed(currency === 'VND' ? 0 : 2),
-            total: total,
-            currency: currency,
-            pair: document.querySelector('.market-item.active').dataset.pair,
-            timestamp: Date.now(),
-            txHash: `0x${Math.random().toString(16).substr(2, 64)}`,
-            status: 'completed'
-          };
-          
-          const history = JSON.parse(localStorage.getItem('transactionHistory') || '[]');
-          history.push(transaction);
-          localStorage.setItem('transactionHistory', JSON.stringify(history));
-          
-          // Update balance
-          const balanceText = document.getElementById('balance').textContent.replace(/,/g, '');
-          const currentUSDTBalance = parseFloat(balanceText) || 0;
-          const receivedAmount = parseFloat(total);
-          
-          if (currency === 'VND') {
-            const newBalanceVND = (currentUSDTBalance * USD_TO_VND_RATE) + receivedAmount;
-            const newBalanceUSDT = newBalanceVND / USD_TO_VND_RATE;
-            localStorage.setItem('usdtBalance', newBalanceUSDT.toFixed(4));
-            
-            // Update if showing VND
-            if (buyCurrencySelect.value === 'VND') {
-              document.getElementById('balance').textContent = newBalanceVND.toLocaleString();
-            } else {
-              document.getElementById('balance').textContent = newBalanceUSDT.toFixed(4);
-            }
-          } else {
-            const newBalance = currentUSDTBalance + receivedAmount;
-            localStorage.setItem('usdtBalance', newBalance.toFixed(4));
-            document.getElementById('balance').textContent = newBalance.toFixed(4);
-          }
-          
-          loadOrderHistory();
-          loadTradeHistory();
-          
-          const successMsg = currency === 'VND'
-            ? `✅ Đã bán ${amount} ETH thành công!\n\n💵 Nhận vào: VND\n📊 Giá: ${parseFloat(actualPrice).toLocaleString()} VND\n💰 Tổng: ${parseFloat(total).toLocaleString()} VND\n\n🔗 Tx: ${transaction.txHash.substring(0, 20)}...`
-            : `✅ Đã bán ${amount} ETH thành công!\n\n💵 Nhận vào: USDT\n📊 Giá: $${actualPrice.toFixed(2)}\n💰 Tổng: $${parseFloat(total).toLocaleString()}\n\n🔗 Tx: ${transaction.txHash.substring(0, 20)}...`;
-          
-          alert(successMsg);
-          
-          // Reset form
-          sellAmountInput.value = '';
-          sellTotalInput.value = '';
-          sellPercentageSlider.value = 0;
-        }
-      };
-
-      // Load order history with currency display
-      function loadOrderHistory() {
-        const history = JSON.parse(localStorage.getItem('transactionHistory') || '[]');
-        const tbody = document.querySelector('#orderHistory tbody');
-        
-        if (!tbody) return;
-        
-        if (history.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Chưa có giao dịch</td></tr>';
-          return;
-        }
-        
-        tbody.innerHTML = history.map(tx => {
-          const date = new Date(tx.timestamp);
-          const timeStr = date.toLocaleString('vi-VN');
-          const statusBadge = '<span class="badge bg-success">Hoàn thành</span>';
-          
-          if (tx.type === 'bank_deposit') {
-            return `
-              <tr>
-                <td>${timeStr}</td>
-                <td><span class="badge bg-info">Nhận tiền</span></td>
-                <td>${tx.bank}</td>
-                <td>-</td>
-                <td>-</td>
-                <td>${tx.amount.toLocaleString()} VND</td>
-                <td>${tx.amount.toLocaleString()} VND</td>
-                <td>${statusBadge}</td>
-              </tr>
-            `;
-          }
-          
-          const currencySymbol = tx.currency === 'VND' ? '' : '$';
-          const currencyText = tx.currency === 'VND' ? ' VND' : ' USDT';
-          const priceFormatted = tx.currency === 'VND' 
-            ? parseFloat(tx.price).toLocaleString() 
-            : parseFloat(tx.price).toFixed(2);
-          const totalFormatted = tx.currency === 'VND'
-            ? parseFloat(tx.total).toLocaleString()
-            : parseFloat(tx.total).toLocaleString();
-          
-          return `
-            <tr>
-              <td>${timeStr}</td>
-              <td>${tx.pair || 'ETH/USDT'}</td>
-              <td>${tx.currency || 'USDT'}</td>
-              <td class="text-${tx.type === 'deposit' ? 'success' : 'danger'}">${tx.type === 'deposit' ? 'Mua' : 'Bán'}</td>
-              <td>${currencySymbol}${priceFormatted}${currencyText}</td>
-              <td>${tx.amount} ETH</td>
-              <td>${currencySymbol}${totalFormatted}${currencyText}</td>
-              <td>${statusBadge}</td>
-            </tr>
-          `;
-        }).reverse().join('');
-      }
-
-      // Load trade history with currency
-      function loadTradeHistory() {
-        const history = JSON.parse(localStorage.getItem('transactionHistory') || '[]');
-        const tbody = document.querySelector('#tradeHistory tbody');
-        
-        if (!tbody) return;
-        
-        const trades = history.filter(tx => tx.type === 'deposit' || tx.type === 'withdraw');
-        
-        if (trades.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Chưa có giao dịch</td></tr>';
-          return;
-        }
-        
-        tbody.innerHTML = trades.map(tx => {
-          const date = new Date(tx.timestamp);
-          const timeStr = date.toLocaleString('vi-VN');
-          const fee = (parseFloat(tx.total) * 0.001).toFixed(tx.currency === 'VND' ? 0 : 2);
-          
-          const currencySymbol = tx.currency === 'VND' ? '' : '$';
-          const currencyText = tx.currency === 'VND' ? ' VND' : '';
-          
-          return `
-            <tr>
-              <td>${timeStr}</td>
-              <td>${tx.pair || 'ETH/USDT'}</td>
-              <td class="text-${tx.type === 'deposit' ? 'success' : 'danger'}">${tx.type === 'deposit' ? 'Mua' : 'Bán'}</td>
-              <td>${currencySymbol}${parseFloat(tx.price).toLocaleString()}${currencyText}</td>
-              <td>${tx.amount} ETH</td>
-              <td>${currencySymbol}${fee}${currencyText}</td>
-              <td>${currencySymbol}${parseFloat(tx.total).toLocaleString()}${currencyText}</td>
-            </tr>
-          `;
-        }).reverse().join('');
-      }
-
-      // Initialize balances
-      if (!localStorage.getItem('usdtBalance')) {
-        localStorage.setItem('usdtBalance', '10000'); // Default 10,000 USDT
-      }
-      
-      const usdtBalance = parseFloat(localStorage.getItem('usdtBalance'));
-      document.getElementById('balance').textContent = usdtBalance.toFixed(4);
-      document.getElementById('balanceCurrency').textContent = 'USDT';
-
-      // Load real price for default coin
-      loadRealPrice();
-
-      // Periodically refresh price and chart data
-      setInterval(() => {
-        loadRealPrice();
-        loadChartDataForCoin(currentCoinId, currentTimeframe);
-      }, 30000);
-
-      // Load histories and auto-connect
-      loadOrderHistory();
-      loadTradeHistory();
-      autoConnectWallet();
-      loadRealPrice();
-      loadChartData();
-
-    }); // End DOMContentLoaded
-    
-    // ========================================
-    // PREVENT BACK BUTTON AFTER LOGOUT
-    // ========================================
-    window.addEventListener('pageshow', function(event) {
-      if (event.persisted) {
-        // Page was loaded from cache (back button)
-        if (localStorage.getItem("loggedIn") !== "true") {
-          console.log('⚠️ Cached page - checking auth...');
-          window.location.replace("login.html");
-        }
-      }
+    }
+    // PWA Install prompt
+    var _pwaPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      _pwaPrompt = e;
+      var btn = document.getElementById('pwaInstallBtn');
+      if (btn) btn.style.display = '';
     });
+    window.addEventListener('appinstalled', function () {
+      var btn = document.getElementById('pwaInstallBtn');
+      if (btn) btn.style.display = 'none';
+      _pwaPrompt = null;
+    });
+    function pwaInstall() {
+      if (!_pwaPrompt) return;
+      _pwaPrompt.prompt();
+      _pwaPrompt.userChoice.then(function (r) {
+        if (r.outcome === 'accepted') {
+          var btn = document.getElementById('pwaInstallBtn');
+          if (btn) btn.style.display = 'none';
+        }
+        _pwaPrompt = null;
+      });
+    }
   </script>
 </body>
 </html>

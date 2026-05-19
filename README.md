@@ -1,30 +1,35 @@
-# 🚀 CryptoTrade Pro - Professional Trading Platform
+# � WFB - Whale Finance Board
 
-Sàn giao dịch tiền điện tử chuyên nghiệp với giao diện hiện đại, hỗ trợ MetaMask và Web3.
+Hệ thống giám sát tài chính tiền điện tử toàn cầu — theo dõi giao dịch lớn (whale), bản đồ ví real-time, biểu đồ phân tích và tích hợp ví Web3.
 
-![CryptoTrade Pro](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
+![PWA](https://img.shields.io/badge/PWA-ready-brightgreen.svg)
 
 ## ✨ Tính năng
 
-- 🔐 **Xác thực bảo mật** - Đăng nhập với mã hóa MD5
+- 🐋 **Whale Tracker** - Theo dõi giao dịch lớn theo thời gian thực
+- 🗺️ **Bản đồ toàn cầu** - Hiển thị ví và giao dịch trên bản đồ thế giới (Leaflet.js)
+- 📊 **Biểu đồ phân tích** - Trực quan hóa dữ liệu với Chart.js
 - 💼 **Kết nối MetaMask** - Tích hợp ví Web3
-- 📊 **Giá thời gian thực** - Cập nhật từ CoinGecko API
-- 📈 **Biểu đồ tương tác** - Sử dụng Chart.js
-- 💱 **15+ Cặp giao dịch** - BTC, ETH, BNB, SOL, XRP, và nhiều hơn
-- 📱 **Responsive** - Tương thích mọi thiết bị
-- 📜 **Lịch sử giao dịch** - Theo dõi đầy đủ
-- 🔔 **Sổ lệnh real-time** - Cập nhật mỗi 3 giây
+- 🔐 **Xác thực bảo mật** - Đăng nhập với mã hóa MD5
+- 🌐 **6 Blockchain** - Ethereum, Bitcoin, BSC, Solana, Polygon, Avalanche
+- 📱 **PWA** - Cài đặt như ứng dụng native trên mọi thiết bị
+- 🐍 **Python CLI** - Công cụ dòng lệnh để tìm kiếm, phân tích và xuất dữ liệu ví
+- 📜 **Smart Contract** - SavingWallet hỗ trợ nạp/rút ETH on-chain
 
 ## 🛠️ Công nghệ sử dụng
 
 - **Frontend**: HTML5, CSS3, JavaScript (ES6+)
 - **Framework**: Bootstrap 5
-- **Libraries**: 
-  - Web3.js - Blockchain integration
+- **Libraries**:
+  - Leaflet.js - Interactive world map
   - Chart.js - Data visualization
+  - Web3.js - Blockchain integration
   - CryptoJS - Encryption
-  - Font Awesome - Icons
+- **Backend / CLI**: Python 3 (`wfb.py`)
+- **Smart Contract**: Solidity ^0.8.0 (`contracts/SavingWallet.sol`)
+- **PWA**: Service Worker + Web App Manifest
 - **API**: CoinGecko API (miễn phí)
 
 ## 📦 Cài đặt
@@ -32,8 +37,8 @@ Sàn giao dịch tiền điện tử chuyên nghiệp với giao diện hiện �
 ### 1. Clone repository
 
 ```bash
-git clone https://github.com/PHUPHU2310/currencyexchangewallet223.git
-cd currencyexchangewallet223
+git clone https://github.com/PHUPHU2310/WFB.git
+cd WFB
 ```
 
 ### 2. Mở ứng dụng
@@ -55,37 +60,52 @@ Hoặc sử dụng Live Server (VS Code):
 - Cài đặt extension "Live Server"
 - Right-click `login.html` → "Open with Live Server"
 
-## 🔑 Đăng nhập
+### 3. Sử dụng Python CLI
 
-**Thông tin đăng nhập mặc định:**
-- Email: `demo@cryptotrade.com`
-- Password: `@@@@@@@@`
+```bash
+# Tìm kiếm ví theo tên
+python wfb.py search --name "Binance"
+
+# Lọc theo mạng và giá trị tối thiểu
+python wfb.py search --network ethereum --min 1000000
+
+# Lọc whale và sắp xếp theo giá trị
+python wfb.py search --type whale --sort value
+
+# Xem chi tiết một ví
+python wfb.py detail --id 0
+
+# Lọc giao dịch rút
+python wfb.py withdraw --min 5000000 --direction out
+
+# Xuất kết quả ra file
+python wfb.py export --output results.json
+
+# Xem trợ giúp
+python wfb.py --help
+```
 
 ## 📁 Cấu trúc dự án
 
 ```
-currencyexchangewallet223/
-├── index.html
-├── login.html
-├── register.html
-├── dashboard.html
-├── profile.html
-├── history.html
-├── settings.html
-├── assets/
-│   ├── css/
-│   │   ├── bootstrap.min.css
-│   │   ├── style.css
-│   ├── js/
-│   │   ├── bootstrap.bundle.min.js
-│   │   ├── chart.min.js
-│   │   ├── crypto-js.min.js
-│   │   ├── web3.min.js
-│   ├── images/
-│   │   ├── logo.png
-│   │   ├── banner.jpg
-├── README.md
+WFB/
+├── index.html          # Dashboard chính
+├── login.html          # Trang đăng nhập
+├── app.js              # Logic ứng dụng (whale tracker, map, charts)
+├── style.css           # Stylesheet
+├── manifest.json       # PWA manifest
+├── sw.js               # Service Worker
+├── wfb.py              # Python CLI tool
+├── data.json           # Dữ liệu mẫu
+├── result.csv          # Kết quả xuất CSV
+├── contracts/
+│   └── SavingWallet.sol  # Smart contract Solidity
+└── README.md
 ```
+
+## 🔑 Đăng nhập
+
+Sử dụng thông tin đăng nhập đã được cấu hình trong hệ thống.
 
 ## 📜 Giấy phép
 

@@ -1,0 +1,43 @@
+{
+  "name": "WFB",
+  "short_name": "WFB",
+  "description": "Hệ thống giám sát tài chính tiền điện tử toàn cầu",
+  "start_url": "./index.html",
+  "id": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#000000",
+  "theme_color": "#111111",
+  "orientation": "any",
+  "lang": "vi",
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 420
+  },
+  "icons": [
+    {
+      "src": "WFB.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Lệnh Rút USD",
+      "short_name": "Rút USD",
+      "url": "./index.html#withdraw",
+      "icons": [{"src": "icon.svg", "sizes": "any"}]
+    },
+    {
+      "name": "Bản đồ Users",
+      "short_name": "Bản đồ",
+      "url": "./index.html#map",
+      "icons": [{"src": "WFB.png", "sizes": "any", "type": "image/png"}]
+    }
+  ],
+  "categories": ["finance", "utilities", "productivity"]
+}
